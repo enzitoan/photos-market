@@ -48,7 +48,7 @@
             <div class="text-center">
               <div class="text-5xl mb-4">💳</div>
               <h3 class="text-xl font-semibold mb-2">3. Compra y Descarga</h3>
-              <p class="text-gray-600">Realiza el pago y descarga en alta resolución</p>
+              <p class="text-gray-600">Realiza el pago y una vez confirmado te enviamos el enlace de descarga</p>
             </div>
           </div>
         </div>
@@ -69,6 +69,49 @@
           >
             Iniciar Sesión con Google
           </router-link>
+        </div>
+      </section>
+
+      <!-- Contact Section -->
+      <section class="bg-white py-12">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 class="text-2xl font-bold mb-8">Contáctanos</h2>
+          
+          <div class="flex justify-center items-center gap-8 flex-wrap">
+            <!-- Instagram -->
+            <a 
+              href="https://instagram.com/egan.fotografia" 
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 text-gray-700 hover:text-purple-600 transition-colors"
+              title="Instagram"
+            >
+              <Instagram :size="20" />
+              <span class="text-sm font-medium">@egan.fotografia</span>
+            </a>
+            
+            <!-- Email -->
+            <a 
+              href="mailto:egan.fotografia.ph@gmail.com"
+              class="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors"
+              title="Email"
+            >
+              <Mail :size="20" />
+              <span class="text-sm font-medium">egan.fotografia.ph@gmail.com</span>
+            </a>
+            
+            <!-- WhatsApp -->
+            <a 
+              href="https://wa.me/56998977144" 
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 text-gray-700 hover:text-green-600 transition-colors"
+              title="WhatsApp"
+            >
+              <MessageCircle :size="20" />
+              <span class="text-sm font-medium">+56 9 9897 7144</span>
+            </a>
+          </div>
         </div>
       </section>
     </main>
@@ -94,6 +137,7 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
 import NavBar from '@/components/NavBar.vue'
+import { Instagram, Mail, MessageCircle } from 'lucide-vue-next'
 
 const authStore = useAuthStore()
 </script>
