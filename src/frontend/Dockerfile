@@ -31,6 +31,10 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY inject-env.sh /docker-entrypoint.d/40-inject-env.sh
 RUN chmod +x /docker-entrypoint.d/40-inject-env.sh
 
+# Create placeholder config.js that will be replaced at runtime
+RUN echo 'window.__ENV__ = { VITE_API_URL: "__VITE_API_URL__" }' > /usr/share/nginx/html/config.js
+
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
+# Run the injection script before starting nginx
+CMD ["/bin/sh", "-c", "/docker-entrypoint.d/40-inject-env.sh && nginx -g 'daemon off;'"]

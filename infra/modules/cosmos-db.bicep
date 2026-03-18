@@ -50,7 +50,7 @@ resource ordersContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/con
       id: 'Orders'
       partitionKey: {
         paths: [
-          '/id'
+          '/userId'
         ]
         kind: 'Hash'
       }
@@ -66,7 +66,7 @@ resource usersContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/cont
       id: 'Users'
       partitionKey: {
         paths: [
-          '/id'
+          '/googleUserId'
         ]
         kind: 'Hash'
       }
@@ -82,7 +82,7 @@ resource downloadLinksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDataba
       id: 'DownloadLinks'
       partitionKey: {
         paths: [
-          '/id'
+          '/userId'
         ]
         kind: 'Hash'
       }

@@ -20,7 +20,27 @@ builder.Services.AddHttpClient();
 builder.Services.Configure<CosmosDbSettings>(builder.Configuration.GetSection("CosmosDb"));
 var googleDriveSettings = builder.Configuration.GetSection("GoogleDrive").Get<GoogleDriveSettings>();
 builder.Services.AddSingleton(googleDriveSettings!);
-builder.Services.Configure<GooglePhotosSettings>(builder.Configuration.GetSection("GoogleOAuth"));
+
+// Configure Google OAuth with dynamic redirect URI
+var frontendUrlForRedirect = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? builder.Configuration["FRONTEND_URL"];
+builder.Services.Configure<GooglePhotosSettings>(options =>
+{
+    builder.Configuration.GetSection("GoogleOAuth").Bind(options);
+    
+    if (!string.IsNullOrEmpty(frontendUrlForRedirect))
+    {
+        // Use Azure frontend URL in production
+        options.RedirectUri = $"{frontendUrlForRedirect}/callback";
+        Console.WriteLine($"🔐 OAuth Redirect URI: {options.RedirectUri}");
+        Console.WriteLine($"🔐 OAuth Client ID: {(string.IsNullOrEmpty(options.ClientId) ? "EMPTY" : options.ClientId.Substring(0, Math.Min(20, options.ClientId.Length)) + "...")}");
+    }
+    else
+    {
+        Console.WriteLine($"🔐 OAuth Redirect URI: {options.RedirectUri} (local)");
+        Console.WriteLine($"🔐 OAuth Client ID: {(string.IsNullOrEmpty(options.ClientId) ? "EMPTY" : options.ClientId.Substring(0, Math.Min(20, options.ClientId.Length)) + "...")}");
+    }
+});
+
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.Configure<ApplicationSettings>(builder.Configuration.GetSection("Application"));
@@ -95,7 +115,7 @@ var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<stri
     ?? new[] { "http://localhost:5173", "http://localhost:3000", "http://localhost:3001", "http://localhost:3002" };
 
 // Add frontend URL from environment if present
-var frontendUrl = builder.Configuration["FRONTEND_URL"];
+var frontendUrl = Environment.GetEnvironmentVariable("FRONTEND_URL") ?? builder.Configuration["FRONTEND_URL"];
 if (!string.IsNullOrEmpty(frontendUrl))
 {
     var originsList = allowedOrigins.ToList();
@@ -104,7 +124,12 @@ if (!string.IsNullOrEmpty(frontendUrl))
         originsList.Add(frontendUrl);
     }
     allowedOrigins = originsList.ToArray();
-    Console.WriteLine($"✅ Added CORS origin: {frontendUrl}");
+}
+
+Console.WriteLine("🔐 CORS Configuration:");
+foreach (var origin in allowedOrigins)
+{
+    Console.WriteLine($"   ✅ {origin}");
 }
 
 builder.Services.AddCors(options =>
@@ -114,7 +139,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowCredentials()
+              .SetIsOriginAllowedToAllowWildcardSubdomains();
     });
 });
 

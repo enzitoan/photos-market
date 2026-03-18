@@ -50,7 +50,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           env: [
             {
               name: 'VITE_API_URL'
-              value: 'https://${backendUrl}/api'
+              value: 'https://${backendUrl}'
             }
           ]
         }
