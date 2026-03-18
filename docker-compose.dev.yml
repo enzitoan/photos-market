@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    container_name: photosmarket-backend-dev
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - UseRealCosmosDb=false
+      - CosmosDb__DatabaseName=PhotosMarketDb
+      - GoogleDrive__RootFolderId=${GOOGLE_DRIVE_ROOT_FOLDER_ID}
+      - GoogleDrive__ApplicationName=PhotosMarket
+      - GoogleOAuth__ClientId=${GOOGLE_OAUTH_CLIENT_ID}
+      - GoogleOAuth__ClientSecret=${GOOGLE_OAUTH_CLIENT_SECRET}
+      - GoogleOAuth__RedirectUri=${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3001/callback}
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=PhotosMarketAPI
+      - Jwt__Audience=PhotosMarketClient
+      - Jwt__ExpirationInMinutes=60
+    volumes:
+      - ./src/backend:/app:ro
+      - ./src/backend/google-drive-credentials.json:/app/credentials/google-drive-credentials.json:ro
+    networks:
+      - photosmarket-network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+      target: build
+    container_name: photosmarket-frontend-dev
+    ports:
+      - "3001:5173"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:5000}
+    volumes:
+      - ./src/frontend:/app:cached
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    depends_on:
+      - backend
+    networks:
+      - photosmarket-network
+    restart: unless-stopped
+
+networks:
+  photosmarket-network:
+    driver: bridge

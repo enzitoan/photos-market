@@ -1,0 +1,358 @@
+using Google.Apis.Auth.OAuth2;
+using Google.Apis.Auth.OAuth2.Flows;
+using Google.Apis.Auth.OAuth2.Responses;
+using Microsoft.Extensions.Options;
+using PhotosMarket.API.Configuration;
+using PhotosMarket.API.DTOs;
+using PhotosMarket.API.Repositories;
+using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace PhotosMarket.API.Services;
+
+public interface IGooglePhotosService
+{
+    string GetAuthorizationUrl(string state);
+    Task<GoogleTokenResponse> ExchangeCodeForTokenAsync(string code);
+    Task<List<AlbumDto>> GetAlbumsAsync();
+    Task<List<PhotoDto>> GetPhotosFromAlbumAsync(string albumId);
+    Task<PhotoDto?> GetPhotoByIdAsync(string mediaItemId);
+    Task<string> GetPhotographerAccessTokenAsync();
+}
+
+public class GoogleTokenResponse
+{
+    public string AccessToken { get; set; } = string.Empty;
+    public string? IdToken { get; set; }
+    public string? RefreshToken { get; set; }
+    public long ExpiresInSeconds { get; set; }
+}
+
+public class GooglePhotosService : IGooglePhotosService
+{
+    private readonly GooglePhotosSettings _settings;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IPhotographerSettingsRepository _photographerSettingsRepository;
+    private readonly ILogger<GooglePhotosService> _logger;
+
+    public GooglePhotosService(
+        IOptions<GooglePhotosSettings> settings,
+        IHttpClientFactory httpClientFactory,
+        IPhotographerSettingsRepository photographerSettingsRepository,
+        ILogger<GooglePhotosService> logger)
+    {
+        _settings = settings.Value;
+        _httpClientFactory = httpClientFactory;
+        _photographerSettingsRepository = photographerSettingsRepository;
+        _logger = logger;
+    }
+
+    public string GetAuthorizationUrl(string state)
+    {
+        var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+        {
+            ClientSecrets = new ClientSecrets
+            {
+                ClientId = _settings.ClientId,
+                ClientSecret = _settings.ClientSecret
+            },
+            Scopes = _settings.Scopes
+        });
+
+        var codeRequestUrl = flow.CreateAuthorizationCodeRequest(_settings.RedirectUri);
+        codeRequestUrl.State = state;
+        
+        var authUrl = codeRequestUrl.Build().ToString();
+        
+        // Verificar si ya contiene los parámetros necesarios y agregarlos solo si no existen
+        if (!authUrl.Contains("access_type="))
+        {
+            var separator = authUrl.Contains("?") ? "&" : "?";
+            authUrl += $"{separator}access_type=offline";
+        }
+        
+        if (!authUrl.Contains("prompt="))
+        {
+            authUrl += "&prompt=consent";
+        }
+        
+        _logger.LogInformation("Generated auth URL with offline access and consent prompt");
+        
+        return authUrl;
+    }
+
+    public async Task<GoogleTokenResponse> ExchangeCodeForTokenAsync(string code)
+    {
+        var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+        {
+            ClientSecrets = new ClientSecrets
+            {
+                ClientId = _settings.ClientId,
+                ClientSecret = _settings.ClientSecret
+            },
+            Scopes = _settings.Scopes,
+            IncludeGrantedScopes = true
+        });
+
+        var token = await flow.ExchangeCodeForTokenAsync(
+            "user",
+            code,
+            _settings.RedirectUri,
+            CancellationToken.None
+        );
+
+        return new GoogleTokenResponse
+        {
+            AccessToken = token.AccessToken,
+            IdToken = token.IdToken,
+            RefreshToken = token.RefreshToken,
+            ExpiresInSeconds = token.ExpiresInSeconds ?? 3600
+        };
+    }
+
+    public async Task<string> GetPhotographerAccessTokenAsync()
+    {
+        var settings = await _photographerSettingsRepository.GetSettingsAsync();
+        
+        if (settings == null || string.IsNullOrEmpty(settings.PhotographerGoogleRefreshToken))
+        {
+            throw new InvalidOperationException("El fotógrafo no ha autenticado su cuenta de Google. Por favor, autentique la cuenta desde el panel de administración.");
+        }
+
+        // Verificar si el token actual sigue siendo válido
+        if (!string.IsNullOrEmpty(settings.PhotographerGoogleAccessToken) && 
+            settings.PhotographerTokenExpiresAt.HasValue && 
+            settings.PhotographerTokenExpiresAt.Value > DateTime.UtcNow.AddMinutes(5))
+        {
+            return settings.PhotographerGoogleAccessToken;
+        }
+
+        // Refrescar el token
+        _logger.LogInformation("Refreshing photographer Google access token...");
+        
+        var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
+        {
+            ClientSecrets = new ClientSecrets
+            {
+                ClientId = _settings.ClientId,
+                ClientSecret = _settings.ClientSecret
+            },
+            Scopes = _settings.Scopes
+        });
+
+        var tokenResponse = await flow.RefreshTokenAsync(
+            "photographer",
+            settings.PhotographerGoogleRefreshToken,
+            CancellationToken.None
+        );
+
+        // Actualizar el token en settings
+        settings.PhotographerGoogleAccessToken = tokenResponse.AccessToken;
+        settings.PhotographerTokenExpiresAt = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresInSeconds ?? 3600);
+        await _photographerSettingsRepository.UpdateSettingsAsync(settings);
+
+        _logger.LogInformation("Photographer access token refreshed successfully");
+        
+        return tokenResponse.AccessToken;
+    }
+
+    public async Task<List<AlbumDto>> GetAlbumsAsync()
+    {
+        var accessToken = await GetPhotographerAccessTokenAsync();
+        var albums = new List<AlbumDto>();
+        var client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        string? nextPageToken = null;
+
+        do
+        {
+            var url = "https://photoslibrary.googleapis.com/v1/albums?pageSize=50";
+            if (!string.IsNullOrEmpty(nextPageToken))
+                url += $"&pageToken={nextPageToken}";
+
+            var response = await client.GetAsync(url);
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync();
+            var albumResponse = JsonSerializer.Deserialize<GoogleAlbumsResponse>(content);
+
+            if (albumResponse?.Albums != null)
+            {
+                foreach (var album in albumResponse.Albums)
+                {
+                    albums.Add(new AlbumDto
+                    {
+                        Id = album.Id ?? string.Empty,
+                        Title = album.Title ?? "Untitled",
+                        CoverPhotoUrl = album.CoverPhotoBaseUrl,
+                        MediaItemsCount = int.TryParse(album.MediaItemsCount, out var count) ? count : 0
+                    });
+                }
+            }
+
+            nextPageToken = albumResponse?.NextPageToken;
+        }
+        while (!string.IsNullOrEmpty(nextPageToken));
+
+        return albums;
+    }
+
+    public async Task<List<PhotoDto>> GetPhotosFromAlbumAsync(string albumId)
+    {
+        var accessToken = await GetPhotographerAccessTokenAsync();
+        var photos = new List<PhotoDto>();
+        var client = _httpClientFactory.CreateClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+        string? nextPageToken = null;
+
+        do
+        {
+            var requestBody = new
+            {
+                albumId,
+                pageSize = 100,
+                pageToken = nextPageToken
+            };
+
+            var content = new StringContent(
+                JsonSerializer.Serialize(requestBody),
+                System.Text.Encoding.UTF8,
+                "application/json");
+
+            var response = await client.PostAsync(
+                "https://photoslibrary.googleapis.com/v1/mediaItems:search",
+                content);
+
+            response.EnsureSuccessStatusCode();
+
+            var responseContent = await response.Content.ReadAsStringAsync();
+            var searchResponse = JsonSerializer.Deserialize<GoogleMediaItemsResponse>(responseContent);
+
+            if (searchResponse?.MediaItems != null)
+            {
+                foreach (var item in searchResponse.MediaItems)
+                {
+                    photos.Add(MapToPhotoDto(item));
+                }
+            }
+
+            nextPageToken = searchResponse?.NextPageToken;
+        }
+        while (!string.IsNullOrEmpty(nextPageToken));
+
+        return photos;
+    }
+
+    public async Task<PhotoDto?> GetPhotoByIdAsync(string mediaItemId)
+    {
+        try
+        {
+            var accessToken = await GetPhotographerAccessTokenAsync();
+            var client = _httpClientFactory.CreateClient();
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            var response = await client.GetAsync($"https://photoslibrary.googleapis.com/v1/mediaItems/{mediaItemId}");
+            response.EnsureSuccessStatusCode();
+
+            var content = await response.Content.ReadAsStringAsync();
+            var mediaItem = JsonSerializer.Deserialize<GoogleMediaItem>(content);
+
+            return mediaItem != null ? MapToPhotoDto(mediaItem) : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private PhotoDto MapToPhotoDto(GoogleMediaItem item)
+    {
+        return new PhotoDto
+        {
+            Id = item.Id ?? string.Empty,
+            MediaItemId = item.Id ?? string.Empty,
+            Filename = item.Filename ?? "Unknown",
+            ThumbnailUrl = $"{item.BaseUrl}=w400-h400",
+            BaseUrl = item.BaseUrl ?? string.Empty,
+            CreationTime = DateTime.TryParse(item.MediaMetadata?.CreationTime, out var creationTime) 
+                ? creationTime 
+                : null,
+            Metadata = item.MediaMetadata != null ? new PhotoMetadataDto
+            {
+                CreationTime = DateTime.TryParse(item.MediaMetadata.CreationTime, out var ct) ? ct : null,
+                CameraMake = item.MediaMetadata.Photo?.CameraMake,
+                CameraModel = item.MediaMetadata.Photo?.CameraModel
+            } : null
+        };
+    }
+}
+
+// JSON response models for Google Photos API
+internal class GoogleAlbumsResponse
+{
+    [JsonPropertyName("albums")]
+    public List<GoogleAlbum>? Albums { get; set; }
+    
+    [JsonPropertyName("nextPageToken")]
+    public string? NextPageToken { get; set; }
+}
+
+internal class GoogleAlbum
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+    
+    [JsonPropertyName("title")]
+    public string? Title { get; set; }
+    
+    [JsonPropertyName("coverPhotoBaseUrl")]
+    public string? CoverPhotoBaseUrl { get; set; }
+    
+    [JsonPropertyName("mediaItemsCount")]
+    public string? MediaItemsCount { get; set; }
+}
+
+internal class GoogleMediaItemsResponse
+{
+    [JsonPropertyName("mediaItems")]
+    public List<GoogleMediaItem>? MediaItems { get; set; }
+    
+    [JsonPropertyName("nextPageToken")]
+    public string? NextPageToken { get; set; }
+}
+
+internal class GoogleMediaItem
+{
+    [JsonPropertyName("id")]
+    public string? Id { get; set; }
+    
+    [JsonPropertyName("filename")]
+    public string? Filename { get; set; }
+    
+    [JsonPropertyName("baseUrl")]
+    public string? BaseUrl { get; set; }
+    
+    [JsonPropertyName("mediaMetadata")]
+    public GoogleMediaMetadata? MediaMetadata { get; set; }
+}
+
+internal class GoogleMediaMetadata
+{
+    [JsonPropertyName("creationTime")]
+    public string? CreationTime { get; set; }
+    
+    [JsonPropertyName("photo")]
+    public GooglePhotoMetadata? Photo { get; set; }
+}
+
+internal class GooglePhotoMetadata
+{
+    [JsonPropertyName("cameraMake")]
+    public string? CameraMake { get; set; }
+    
+    [JsonPropertyName("cameraModel")]
+    public string? CameraModel { get; set; }
+}

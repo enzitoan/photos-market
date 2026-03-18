@@ -1,0 +1,174 @@
+name: Full Deploy to Azure
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: rg-photosmarket-dev
+  AZURE_CONTAINER_REGISTRY: photosmarketacrdev
+  BACKEND_IMAGE_NAME: photosmarket-backend
+  FRONTEND_IMAGE_NAME: photosmarket-frontend
+  BACKEND_CONTAINER_APP: photosmarket-backend-dev
+  FRONTEND_CONTAINER_APP: photosmarket-frontend-dev
+  AZURE_REGION: eastus
+
+jobs:
+  build-and-push-images:
+    name: Build and Push Docker Images
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to Azure Container Registry
+        run: |
+          az acr login --name ${{ env.AZURE_CONTAINER_REGISTRY }}
+
+      - name: Build and push Backend image
+        working-directory: ./src/backend
+        run: |
+          IMAGE_TAG=${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+          IMAGE_LATEST=${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:latest
+          
+          docker build -t $IMAGE_TAG -t $IMAGE_LATEST .
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+      - name: Build and push Frontend image
+        working-directory: ./src/frontend
+        run: |
+          IMAGE_TAG=${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+          IMAGE_LATEST=${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:latest
+          
+          docker build -t $IMAGE_TAG -t $IMAGE_LATEST .
+          docker push $IMAGE_TAG
+          docker push $IMAGE_LATEST
+
+      - name: Logout from Azure
+        if: always()
+        run: az logout
+
+  deploy-backend:
+    name: Deploy Backend
+    needs: build-and-push-images
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Backend to Container App
+        run: |
+          az containerapp update \
+            --name ${{ env.BACKEND_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.BACKEND_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Verify Backend deployment
+        run: |
+          REVISION=$(az containerapp show \
+            --name ${{ env.BACKEND_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.latestRevisionName" -o tsv)
+          
+          echo "✅ Backend deployed - Revision: $REVISION"
+
+      - name: Logout from Azure
+        if: always()
+        run: az logout
+
+  deploy-frontend:
+    name: Deploy Frontend
+    needs: build-and-push-images
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Deploy Frontend to Container App
+        run: |
+          az containerapp update \
+            --name ${{ env.FRONTEND_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image ${{ env.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${{ env.FRONTEND_IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Verify Frontend deployment
+        run: |
+          REVISION=$(az containerapp show \
+            --name ${{ env.FRONTEND_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.latestRevisionName" -o tsv)
+          
+          echo "✅ Frontend deployed - Revision: $REVISION"
+
+      - name: Logout from Azure
+        if: always()
+        run: az logout
+
+  health-check:
+    name: Health Check
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get Container Apps URLs
+        id: get-urls
+        run: |
+          BACKEND_URL=$(az containerapp show \
+            --name ${{ env.BACKEND_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          
+          FRONTEND_URL=$(az containerapp show \
+            --name ${{ env.FRONTEND_CONTAINER_APP }} \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.configuration.ingress.fqdn" -o tsv)
+          
+          echo "backend-url=https://$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend-url=https://$FRONTEND_URL" >> $GITHUB_OUTPUT
+
+      - name: Check Backend health
+        run: |
+          echo "Checking Backend: ${{ steps.get-urls.outputs.backend-url }}/swagger"
+          curl -f -s -o /dev/null -w "%{http_code}" ${{ steps.get-urls.outputs.backend-url }}/swagger || echo "Backend health check failed"
+
+      - name: Check Frontend health
+        run: |
+          echo "Checking Frontend: ${{ steps.get-urls.outputs.frontend-url }}"
+          HTTP_CODE=$(curl -f -s -o /dev/null -w "%{http_code}" ${{ steps.get-urls.outputs.frontend-url }})
+          echo "Frontend response code: $HTTP_CODE"
+
+      - name: Deployment Summary
+        run: |
+          echo "╔════════════════════════════════════════════════════╗"
+          echo "║        ✅ DEPLOYMENT COMPLETED SUCCESSFULLY       ║"
+          echo "╚════════════════════════════════════════════════════╝"
+          echo ""
+          echo "🔗 Backend:  ${{ steps.get-urls.outputs.backend-url }}"
+          echo "🔗 Frontend: ${{ steps.get-urls.outputs.frontend-url }}"
+          echo ""
+          echo "📊 Commit: ${{ github.sha }}"
+          echo "👤 Author: ${{ github.actor }}"
+
+      - name: Logout from Azure
+        if: always()
+        run: az logout

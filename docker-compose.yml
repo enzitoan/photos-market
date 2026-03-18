@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./src/backend
+      dockerfile: Dockerfile
+    container_name: photosmarket-backend
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - UseRealCosmosDb=${USE_REAL_COSMOSDB:-false}
+      - ConnectionStrings__CosmosDb=${COSMOSDB_CONNECTION_STRING}
+      - CosmosDb__DatabaseName=PhotosMarketDb
+      - GoogleDrive__RootFolderId=${GOOGLE_DRIVE_ROOT_FOLDER_ID}
+      - GoogleDrive__ApplicationName=PhotosMarket
+      - GoogleOAuth__ClientId=${GOOGLE_OAUTH_CLIENT_ID}
+      - GoogleOAuth__ClientSecret=${GOOGLE_OAUTH_CLIENT_SECRET}
+      - GoogleOAuth__RedirectUri=${GOOGLE_OAUTH_REDIRECT_URI:-http://localhost:3001/callback}
+      - Jwt__SecretKey=${JWT_SECRET_KEY}
+      - Jwt__Issuer=PhotosMarketAPI
+      - Jwt__Audience=PhotosMarketClient
+      - Jwt__ExpirationInMinutes=60
+      - Email__Enabled=${EMAIL_ENABLED:-false}
+      - Email__SmtpServer=${EMAIL_SMTP_SERVER}
+      - Email__SmtpPort=${EMAIL_SMTP_PORT:-587}
+      - Email__SenderEmail=${EMAIL_SENDER_EMAIL}
+      - Email__SenderName=Photos Market
+      - Email__SenderPassword=${EMAIL_SENDER_PASSWORD}
+      - Email__EnableSsl=${EMAIL_ENABLE_SSL:-true}
+    volumes:
+      - ./src/backend/google-drive-credentials.json:/app/credentials/google-drive-credentials.json:ro
+    networks:
+      - photosmarket-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: ./src/frontend
+      dockerfile: Dockerfile
+    container_name: photosmarket-frontend
+    ports:
+      - "3001:80"
+    environment:
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:5000}
+    depends_on:
+      - backend
+    networks:
+      - photosmarket-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+networks:
+  photosmarket-network:
+    driver: bridge
+
+volumes:
+  cosmosdb-data:
