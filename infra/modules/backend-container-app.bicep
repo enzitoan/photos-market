@@ -64,6 +64,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
           keyVaultUrl: '${keyVaultUri}secrets/CosmosDbConnectionString'
           identity: 'system'
         }
+        {
+          name: 'google-drive-credentials'
+          keyVaultUrl: '${keyVaultUri}secrets/GoogleDriveCredentials'
+          identity: 'system'
+        }
       ]
     }
     template: {
@@ -107,6 +112,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'GoogleDrive__ApplicationName'
               value: 'PhotosMarket'
+            }
+            {
+              name: 'GoogleDrive__CredentialsJson'
+              secretRef: 'google-drive-credentials'
             }
             {
               name: 'GoogleOAuth__ClientId'

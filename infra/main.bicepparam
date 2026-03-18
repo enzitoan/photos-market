@@ -9,3 +9,4 @@ param googleDriveRootFolderId = '1JoezTDvrHG76ICArjBhFBdZEOW8tWn05'
 param googleOAuthClientId = readEnvironmentVariable('GOOGLE_OAUTH_CLIENT_ID', '')
 param googleOAuthClientSecret = readEnvironmentVariable('GOOGLE_OAUTH_CLIENT_SECRET', '')
 param jwtSecretKey = readEnvironmentVariable('JWT_SECRET_KEY', '')
+param googleDriveCredentials = readEnvironmentVariable('GOOGLE_DRIVE_CREDENTIALS', '')

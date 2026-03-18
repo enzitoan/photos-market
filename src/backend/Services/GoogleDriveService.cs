@@ -4,6 +4,7 @@ using Google.Apis.Drive.v3.Data;
 using Google.Apis.Services;
 using PhotosMarket.API.Configuration;
 using PhotosMarket.API.DTOs;
+using System.Text;
 
 namespace PhotosMarket.API.Services;
 
@@ -31,21 +32,38 @@ public class GoogleDriveService
 
         try
         {
-            var credentialsPath = Path.Combine(Directory.GetCurrentDirectory(), _settings.CredentialsFilePath);
-
-            if (!System.IO.File.Exists(credentialsPath))
-            {
-                throw new FileNotFoundException(
-                    $"Archivo de credenciales no encontrado: {credentialsPath}. " +
-                    "Descarga el archivo JSON de la Service Account y colócalo en src/backend/"
-                );
-            }
-
             GoogleCredential credential;
-            using (var stream = new FileStream(credentialsPath, FileMode.Open, FileAccess.Read))
+
+            // Prioridad 1: Usar CredentialsJson (desde Key Vault en producción)
+            if (!string.IsNullOrEmpty(_settings.CredentialsJson))
             {
-                credential = GoogleCredential.FromStream(stream)
-                    .CreateScoped(DriveService.Scope.DriveReadonly);
+                _logger.LogInformation("Using Google Drive credentials from environment variable (Key Vault)");
+                
+                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(_settings.CredentialsJson)))
+                {
+                    credential = GoogleCredential.FromStream(stream)
+                        .CreateScoped(DriveService.Scope.DriveReadonly);
+                }
+            }
+            // Prioridad 2: Usar archivo local (desarrollo)
+            else
+            {
+                var credentialsPath = Path.Combine(Directory.GetCurrentDirectory(), _settings.CredentialsFilePath);
+                _logger.LogInformation($"Using Google Drive credentials from file: {credentialsPath}");
+
+                if (!System.IO.File.Exists(credentialsPath))
+                {
+                    throw new FileNotFoundException(
+                        $"Archivo de credenciales no encontrado: {credentialsPath}. " +
+                        "Descarga el archivo JSON de la Service Account y colócalo en src/backend/ o configura la variable de entorno GoogleDrive__CredentialsJson"
+                    );
+                }
+
+                using (var stream = new FileStream(credentialsPath, FileMode.Open, FileAccess.Read))
+                {
+                    credential = GoogleCredential.FromStream(stream)
+                        .CreateScoped(DriveService.Scope.DriveReadonly);
+                }
             }
 
             _driveService = new DriveService(new BaseClientService.Initializer()

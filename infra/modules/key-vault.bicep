@@ -20,6 +20,10 @@ param jwtSecretKey string
 @secure()
 param cosmosDbConnectionString string
 
+@description('Google Drive Service Account Credentials JSON')
+@secure()
+param googleDriveCredentials string
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: name
   location: location
@@ -66,6 +70,14 @@ resource cosmosDbConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-
   name: 'CosmosDbConnectionString'
   properties: {
     value: cosmosDbConnectionString
+  }
+}
+
+resource googleDriveCredentialsSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'GoogleDriveCredentials'
+  properties: {
+    value: googleDriveCredentials
   }
 }
 

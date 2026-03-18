@@ -50,6 +50,10 @@ param googleDriveRootFolderId string
 @secure()
 param jwtSecretKey string
 
+@description('Google Drive Service Account Credentials JSON')
+@secure()
+param googleDriveCredentials string
+
 // Container Registry
 module containerRegistry 'modules/container-registry.bicep' = {
   name: 'containerRegistry'
@@ -88,6 +92,7 @@ module keyVault 'modules/key-vault.bicep' = {
     googleOAuthClientSecret: googleOAuthClientSecret
     jwtSecretKey: jwtSecretKey
     cosmosDbConnectionString: cosmosDb.outputs.connectionString
+    googleDriveCredentials: googleDriveCredentials
   }
 }
 
