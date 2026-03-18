@@ -117,7 +117,6 @@ module backendApp 'modules/backend-container-app.bicep' = {
   }
   dependsOn: [
     containerRegistry
-    keyVault
   ]
 }
 
@@ -125,7 +124,7 @@ module backendApp 'modules/backend-container-app.bicep' = {
 module frontendApp 'modules/frontend-container-app.bicep' = {
   name: 'frontendApp'
   params: {
-    name: '${appName}-frontend'
+    name: '${appName}-frontend-${environmentName}'
     location: location
     containerAppsEnvironmentId: containerAppsEnvironment.outputs.id
     containerImage: frontendImage
@@ -173,7 +172,7 @@ resource backendAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2
 
 // Assign ACR Pull role to Frontend Container App
 resource frontendAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(existingContainerRegistry.id, '${appName}-frontend', 'AcrPull')
+  name: guid(existingContainerRegistry.id, '${appName}-frontend-${environmentName}', 'AcrPull')
   scope: existingContainerRegistry
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
@@ -188,3 +187,4 @@ output frontendUrl string = 'https://${frontendApp.outputs.fqdn}'
 output containerRegistryLoginServer string = containerRegistry.outputs.loginServer
 output cosmosDbEndpoint string = cosmosDb.outputs.endpoint
 output keyVaultUri string = keyVault.outputs.uri
+output keyVaultName string = keyVaultName

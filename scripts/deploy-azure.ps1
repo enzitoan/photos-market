@@ -73,8 +73,8 @@ if (-not $SkipBuild) {
     Write-Host "→ Desplegando infraestructura inicial (ACR)..." -ForegroundColor Yellow
     az deployment group create `
         --resource-group $ResourceGroupName `
-        --template-file "../infra/main.bicep" `
-        --parameters "../infra/main.bicepparam" `
+        --template-file "$PSScriptRoot\..\infra\main.bicep" `
+        --parameters "$PSScriptRoot\..\infra\main.bicepparam" `
         --parameters environmentName=$Environment `
         --output none
     
@@ -202,6 +202,8 @@ Write-Host "  Container Registry: $($deployment.properties.outputs.containerRegi
 Write-Host "  CosmosDB:           $($deployment.properties.outputs.cosmosDbEndpoint.value)" -ForegroundColor White
 $keyVaultName = $deployment.properties.outputs.keyVaultName.value
 Write-Host "  Key Vault:          $keyVaultName" -ForegroundColor White
+Write-Host "  Backend App:        $backendAppName" -ForegroundColor White
+Write-Host "  Frontend App:       $frontendAppName" -ForegroundColor White
 Write-Host ""
 
 # Guardar nombres de recursos para referencia
