@@ -57,14 +57,6 @@
           ← Volver al sitio principal
         </router-link>
       </div>
-
-      <div class="mt-4 p-4 bg-blue-50 rounded-md">
-        <p class="text-xs text-blue-800">
-          <strong>Credenciales de prueba:</strong><br>
-          Usuario: admin<br>
-          Contraseña: admin
-        </p>
-      </div>
     </div>
   </div>
 </template>
