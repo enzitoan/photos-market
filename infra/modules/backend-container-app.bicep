@@ -106,6 +106,22 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: 'PhotosMarketDb'
             }
             {
+              name: 'CosmosDb__ContainerNames__Orders'
+              value: 'Orders'
+            }
+            {
+              name: 'CosmosDb__ContainerNames__Users'
+              value: 'Users'
+            }
+            {
+              name: 'CosmosDb__ContainerNames__DownloadLinks'
+              value: 'DownloadLinks'
+            }
+            {
+              name: 'CosmosDb__ContainerNames__PhotographerSettings'
+              value: 'PhotographerSettings'
+            }
+            {
               name: 'GoogleDrive__RootFolderId'
               value: googleDriveRootFolderId
             }
@@ -124,6 +140,18 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'GoogleOAuth__ClientSecret'
               secretRef: 'google-oauth-client-secret'
+            }
+            {
+              name: 'GoogleOAuth__Scopes__0'
+              value: 'https://www.googleapis.com/auth/userinfo.email'
+            }
+            {
+              name: 'GoogleOAuth__Scopes__1'
+              value: 'https://www.googleapis.com/auth/userinfo.profile'
+            }
+            {
+              name: 'GoogleOAuth__Scopes__2'
+              value: 'openid'
             }
             {
               name: 'Jwt__SecretKey'
