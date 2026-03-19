@@ -4,7 +4,8 @@
       <div class="flex justify-between h-14 sm:h-16">
         <div class="flex items-center">
           <router-link to="/" class="flex items-center">
-            <span class="text-lg sm:text-2xl font-bold text-primary-600">📸 <span class="hidden sm:inline">PhotosMarket</span></span>
+            <Icon name="camera" :size="24" class="text-primary-600 sm:mr-2" />
+            <span class="text-lg sm:text-2xl font-bold text-primary-600 hidden sm:inline">PhotosMarket</span>
           </router-link>
         </div>
         
@@ -12,18 +13,18 @@
           <template v-if="authStore.isAuthenticated">
             <router-link 
               to="/albums" 
-              class="text-gray-700 hover:text-primary-600 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
+              class="text-gray-700 hover:text-primary-600 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium flex items-center"
             >
               <span class="hidden sm:inline">Álbumes</span>
-              <span class="sm:hidden">🖼️</span>
+              <Icon name="image" :size="18" class="sm:hidden" />
             </router-link>
             
             <router-link 
               to="/orders" 
-              class="text-gray-700 hover:text-primary-600 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
+              class="text-gray-700 hover:text-primary-600 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium flex items-center"
             >
               <span class="hidden sm:inline">Mis Pedidos</span>
-              <span class="sm:hidden">📝</span>
+              <Icon name="file-text" :size="18" class="sm:hidden" />
             </router-link>
             
             <CartIcon />
@@ -31,10 +32,10 @@
             <router-link 
               v-if="authStore.isAdmin"
               to="/admin" 
-              class="bg-primary-600 text-white hover:bg-primary-700 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium"
+              class="bg-primary-600 text-white hover:bg-primary-700 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium flex items-center"
             >
               <span class="hidden sm:inline">Panel Admin</span>
-              <span class="sm:hidden">⚙️</span>
+              <Icon name="settings" :size="18" class="sm:hidden" />
             </router-link>
             
             <div class="relative" ref="dropdown">
@@ -43,9 +44,7 @@
                 class="flex items-center text-gray-700 hover:text-primary-600 px-1 sm:px-2"
               >
                 <span class="mr-1 sm:mr-2 text-xs sm:text-sm truncate max-w-[80px] sm:max-w-none">{{ authStore.user?.name || 'Usuario' }}</span>
-                <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1  0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/>
-                </svg>
+                <Icon name="chevron-down" :size="16" />
               </button>
               
               <div 
@@ -54,8 +53,9 @@
               >
                 <button 
                   @click="handleLogout"
-                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                 >
+                  <Icon name="logout" :size="16" class="mr-2" />
                   Cerrar Sesión
                 </button>
               </div>
@@ -82,6 +82,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import CartIcon from './CartIcon.vue'
+import Icon from './Icon.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

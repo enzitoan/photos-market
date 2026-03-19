@@ -1,9 +1,10 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-8">
-      <h1 class="text-3xl font-bold">Gestión de Pedidos</h1>
-      <button @click="loadOrders" class="btn btn-secondary">
-        🔄 Actualizar
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
+      <h1 class="text-2xl sm:text-3xl font-bold">Gestión de Pedidos</h1>
+      <button @click="loadOrders" class="btn btn-secondary flex items-center justify-center">
+        <Icon name="refresh" :size="18" class="mr-2" />
+        Actualizar
       </button>
     </div>
     
@@ -18,38 +19,42 @@
     
     <div v-else>
       <!-- Filter Tabs -->
-      <div class="flex gap-4 mb-6">
+      <div class="flex flex-wrap gap-2 sm:gap-4 mb-6">
         <button 
           @click="filter = 'all'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           :class="filter === 'all' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           Todos ({{ orders.length }})
         </button>
         <button 
           @click="filter = 'AwaitingPayment'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base whitespace-nowrap"
           :class="filter === 'AwaitingPayment' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
-          Pendientes Pago ({{ awaitingOrders.length }})
+          <span class="hidden sm:inline">Pendientes Pago</span>
+          <span class="sm:hidden">Pago</span>
+          ({{ awaitingOrders.length }})
         </button>
         <button 
           @click="filter = 'Processing'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base whitespace-nowrap"
           :class="filter === 'Processing' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
-          En Preparación ({{ processingOrders.length }})
+          <span class="hidden sm:inline">En Preparación</span>
+          <span class="sm:hidden">Prep.</span>
+          ({{ processingOrders.length }})
         </button>
         <button 
           @click="filter = 'Completed'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           :class="filter === 'Completed' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           Completados ({{ completedOrders.length }})
         </button>
         <button 
           @click="filter = 'Cancelled'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           :class="filter === 'Cancelled' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           Cancelados ({{ cancelledOrders.length }})
@@ -61,30 +66,30 @@
         No hay pedidos {{ filter !== 'all' ? getStatusText(filter).toLowerCase() : '' }}
       </div>
       
-      <div v-else class="card overflow-x-auto">
-        <table class="w-full">
+      <div v-else class="card overflow-x-auto -mx-4 sm:mx-0">
+        <table class="w-full min-w-[640px]">
           <thead class="bg-gray-50">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pedido</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fotos</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fecha</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pedido</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Email</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fotos</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Fecha</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
             <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-gray-50">
-              <td class="px-4 py-3 text-sm font-medium">#{{ order.id.substring(0, 8) }}</td>
-              <td class="px-4 py-3 text-sm">
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium">#{{ order.id.substring(0, 8) }}</td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden lg:table-cell">
                 <a :href="`mailto:${order.userEmail}`" class="text-primary-600 hover:text-primary-700">
                   {{ order.userEmail }}
                 </a>
               </td>
-              <td class="px-4 py-3 text-sm">{{ order.photos.length }}</td>
-              <td class="px-4 py-3 text-sm font-medium">${{ Math.round(order.totalAmount).toLocaleString('es-CL') }} {{ order.currency }}</td>
-              <td class="px-4 py-3 text-sm">
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm">{{ order.photos.length }}</td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium">${{ Math.round(order.totalAmount).toLocaleString('es-CL') }} <span class="hidden sm:inline">{{ order.currency }}</span></td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm">
                 <span 
                   class="px-2 py-1 rounded-full text-xs font-medium"
                   :class="getStatusClass(order.status)"
@@ -92,15 +97,15 @@
                   {{ getStatusText(order.status) }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-sm text-gray-500">{{ formatDate(order.createdAt) }}</td>
-              <td class="px-4 py-3 text-sm">
-                <div class="flex gap-2">
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-500 hidden md:table-cell">{{ formatDate(order.createdAt) }}</td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm">
+                <div class="flex gap-1 sm:gap-2">
                   <button 
                     @click="viewOrderDetails(order)"
                     class="text-primary-600 hover:text-primary-700"
                     title="Ver detalles"
                   >
-                    👁️
+                    <Icon name="eye" :size="18" />
                   </button>
                   
                   <button 
@@ -110,7 +115,7 @@
                     class="text-green-600 hover:text-green-700 disabled:opacity-50"
                     title="Confirmar pago"
                   >
-                    ✓
+                    <Icon name="check" :size="18" />
                   </button>
                   
                   <button 
@@ -120,7 +125,7 @@
                     class="text-blue-600 hover:text-blue-700 disabled:opacity-50"
                     title="Marcar como completado"
                   >
-                    📦
+                    <Icon name="package" :size="18" />
                   </button>
                   
                   <button 
@@ -130,7 +135,7 @@
                     class="text-red-600 hover:text-red-700 disabled:opacity-50"
                     title="Cancelar pedido"
                   >
-                    ✕
+                    <Icon name="x" :size="18" />
                   </button>
                 </div>
               </td>
@@ -150,10 +155,10 @@
         class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto"
         @click.stop
       >
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <div class="flex items-start justify-between mb-6">
             <div>
-              <h2 class="text-2xl font-bold mb-2">Pedido #{{ selectedOrder.id.substring(0, 8) }}</h2>
+              <h2 class="text-xl sm:text-2xl font-bold mb-2">Pedido #{{ selectedOrder.id.substring(0, 8) }}</h2>
               <span 
                 class="px-3 py-1 rounded-full text-sm font-medium"
                 :class="getStatusClass(selectedOrder.status)"
@@ -161,8 +166,8 @@
                 {{ getStatusText(selectedOrder.status) }}
               </span>
             </div>
-            <button @click="selectedOrder = null" class="text-gray-500 hover:text-gray-700 text-2xl">
-              ×
+            <button @click="selectedOrder = null" class="text-gray-500 hover:text-gray-700">
+              <Icon name="x" :size="24" />
             </button>
           </div>
           
@@ -234,29 +239,32 @@
           </div>
           
           <!-- Actions -->
-          <div class="flex gap-3">
+          <div class="flex flex-col sm:flex-row gap-3">
             <button 
               v-if="selectedOrder.status === 'AwaitingPayment'"
-              @click="confirmPayment(selectedOrder.id); selectedOrder = null"
-              class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+             @click="confirmPayment(selectedOrder.id); selectedOrder = null"
+              class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
             >
-              ✓ Confirmar Pago
+              <Icon name="check" :size="18" class="mr-2" />
+              Confirmar Pago
             </button>
             
             <button 
               v-if="selectedOrder.status === 'Processing'"
               @click="completeOrder(selectedOrder.id); selectedOrder = null"
-              class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center"
             >
-              📦 Marcar como Completado
+              <Icon name="package" :size="18" class="mr-2" />
+              Marcar como Completado
             </button>
             
             <button 
               v-if="selectedOrder.status !== 'Completed' && selectedOrder.status !== 'Cancelled'"
               @click="cancelOrder(selectedOrder.id); selectedOrder = null"
-              class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+              class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center justify-center"
             >
-              ✕ Cancelar Pedido
+              <Icon name="x" :size="18" class="mr-2" />
+              Cancelar Pedido
             </button>
             
             <button 
@@ -276,6 +284,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import Icon from '@/components/Icon.vue'
 import ordersService from '@/services/ordersService'
 
 const toast = useToast()

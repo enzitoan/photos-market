@@ -1,14 +1,18 @@
 <template>
   <div>
-    <div class="flex items-center justify-between mb-8">
-      <h1 class="text-3xl font-bold">Gestión de Álbumes</h1>
-      <button @click="loadAlbums" class="btn btn-secondary">
-        🔄 Actualizar
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 gap-4">
+      <h1 class="text-2xl sm:text-3xl font-bold">Gestión de Álbumes</h1>
+      <button @click="loadAlbums" class="btn btn-secondary flex items-center justify-center">
+        <Icon name="refresh" :size="18" class="mr-2" />
+        Actualizar
       </button>
     </div>
     
     <div class="card mb-6">
-      <h2 class="text-lg font-semibold mb-4">ℹ️ Información</h2>
+      <h2 class="text-base sm:text-lg font-semibold mb-4 flex items-center">
+        <Icon name="info" :size="18" class="mr-2" />
+        Información
+      </h2>
       <p class="text-gray-600 text-sm">
         Los álbumes bloqueados no serán visibles para los clientes. 
         Puedes bloquear álbumes temporalmente o desbloquearlos cuando lo necesites.
@@ -21,16 +25,15 @@
       <div class="max-w-md mx-auto">
         <div class="bg-red-50 border border-red-200 rounded-lg p-6 mb-4">
           <div class="flex items-start">
-            <svg class="h-6 w-6 text-red-600 mr-3 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <Icon name="alert" :size="24" class="text-red-600 mr-3 flex-shrink-0 mt-0.5" />
             <div class="text-left">
               <h3 class="text-sm font-medium text-red-800 mb-2">Error al cargar álbumes</h3>
               <p class="text-sm text-red-700 mb-3">{{ error }}</p>
               
               <div v-if="needsGoogleAuth" class="space-y-2">
-                <p class="text-sm text-red-600 font-semibold">
-                  ⚠️ Acción requerida:
+                <p class="text-sm text-red-600 font-semibold flex items-center">
+                  <Icon name="alert" :size="16" class="mr-1" />
+                  Acción requerida:
                 </p>
                 <router-link 
                   to="/admin/google-auth"
@@ -49,33 +52,34 @@
         <button 
           v-if="!needsGoogleAuth"
           @click="loadAlbums" 
-          class="btn btn-primary"
+          class="btn btn-primary flex items-center justify-center"
         >
-          🔄 Reintentar
+          <Icon name="refresh" :size="18" class="mr-2" />
+          Reintentar
         </button>
       </div>
     </div>
     
     <div v-else>
       <!-- Filter Tabs -->
-      <div class="flex gap-4 mb-6">
+      <div class="flex flex-wrap gap-2 sm:gap-4 mb-6">
         <button 
           @click="filter = 'all'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           :class="filter === 'all' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           Todos ({{ albums.length }})
         </button>
         <button 
           @click="filter = 'active'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           :class="filter === 'active' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           Activos ({{ activeAlbums.length }})
         </button>
         <button 
           @click="filter = 'blocked'"
-          class="px-4 py-2 rounded-lg transition-colors"
+          class="px-3 sm:px-4 py-2 rounded-lg transition-colors text-sm sm:text-base"
           :class="filter === 'blocked' ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'"
         >
           Bloqueados ({{ blockedAlbums.length }})
@@ -87,7 +91,7 @@
         No hay álbumes {{ filter === 'blocked' ? 'bloqueados' : filter === 'active' ? 'activos' : '' }}
       </div>
       
-      <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <div 
           v-for="album in filteredAlbums" 
           :key="album.id"
@@ -109,14 +113,15 @@
             <!-- Blocked Badge -->
             <div 
               v-if="album.isBlocked"
-              class="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium"
+              class="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center"
             >
-              🚫 Bloqueado
+              <Icon name="ban" :size="14" class="mr-1" />
+              Bloqueado
             </div>
           </div>
           
           <!-- Album Info -->
-          <h3 class="font-semibold text-lg mb-2">{{ album.title || 'Sin título' }}</h3>
+          <h3 class="font-semibold text-base sm:text-lg mb-2 truncate">{{ album.title || 'Sin título' }}</h3>
           <p class="text-sm text-gray-600 mb-4">
             {{ album.mediaItemsCount || 0 }} fotos
           </p>
@@ -126,16 +131,18 @@
             <button 
               v-if="album.isBlocked"
               @click="unblockAlbum(album.googleAlbumId)"
-              class="flex-1 btn btn-success"
+              class="flex-1 btn btn-success flex items-center justify-center text-sm"
             >
-              ✓ Desbloquear
+              <Icon name="check" :size="16" class="mr-1" />
+              Desbloquear
             </button>
             <button 
               v-else
               @click="blockAlbum(album.googleAlbumId)"
-              class="flex-1 btn btn-danger"
+              class="flex-1 btn btn-danger flex items-center justify-center text-sm"
             >
-              🚫 Bloquear
+              <Icon name="ban" :size="16" class="mr-1" />
+              Bloquear
             </button>
             
             <button 
@@ -143,7 +150,7 @@
               class="btn btn-secondary"
               title="Ver detalles"
             >
-              👁️
+              <Icon name="eye" :size="16" />
             </button>
           </div>
         </div>
@@ -160,18 +167,18 @@
         class="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto"
         @click.stop
       >
-        <div class="p-6">
+        <div class="p-4 sm:p-6">
           <div class="flex items-start justify-between mb-4">
-            <h2 class="text-2xl font-bold">{{ selectedAlbum.title }}</h2>
+            <h2 class="text-xl sm:text-2xl font-bold">{{ selectedAlbum.title }}</h2>
             <button @click="selectedAlbum = null" class="text-gray-500 hover:text-gray-700 text-2xl">
-              ×
+              <Icon name="x" :size="24" />
             </button>
           </div>
           
           <div class="space-y-3 text-sm">
             <div>
               <span class="font-medium text-gray-700">ID:</span>
-              <p class="text-gray-600 font-mono text-xs">{{ selectedAlbum.googleAlbumId }}</p>
+              <p class="text-gray-600 font-mono text-xs break-all">{{ selectedAlbum.googleAlbumId }}</p>
             </div>
             
             <div>
@@ -181,8 +188,9 @@
             
             <div>
               <span class="font-medium text-gray-700">Estado:</span>
-              <p class="text-gray-600">
-                {{ selectedAlbum.isBlocked ? '🚫 Bloqueado' : '✓ Activo' }}
+              <p class="text-gray-600 flex items-center">
+                <Icon :name="selectedAlbum.isBlocked ? 'ban' : 'check'" :size="16" class="mr-1" :class="selectedAlbum.isBlocked ? 'text-red-600' : 'text-green-600'" />
+                {{ selectedAlbum.isBlocked ? 'Bloqueado' : 'Activo' }}
               </p>
             </div>
             
@@ -208,6 +216,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useAdminStore } from '@/stores/admin'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import Icon from '@/components/Icon.vue'
 import adminService from '@/services/adminService'
 
 const toast = useToast()

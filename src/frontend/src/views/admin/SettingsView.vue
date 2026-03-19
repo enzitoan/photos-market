@@ -1,16 +1,17 @@
 <template>
   <div>
-    <h1 class="text-3xl font-bold mb-8">Configuración del Sistema</h1>
+    <h1 class="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Configuración del Sistema</h1>
     
     <!-- Watermark Configuration -->
     <div class="card mb-6">
-      <div class="flex items-center justify-between mb-6">
-        <h2 class="text-xl font-semibold">Marca de Agua</h2>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-3">
+        <h2 class="text-lg sm:text-xl font-semibold">Marca de Agua</h2>
         <span 
-          class="px-3 py-1 rounded-full text-xs font-medium"
+          class="px-3 py-1 rounded-full text-xs font-medium inline-flex items-center w-fit"
           :class="hasUnsavedChanges ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'"
         >
-          {{ hasUnsavedChanges ? '⚠️ Cambios sin guardar' : '✓ Guardado' }}
+          <Icon :name="hasUnsavedChanges ? 'alert' : 'check'" :size="14" class="mr-1" />
+          {{ hasUnsavedChanges ? 'Cambios sin guardar' : 'Guardado' }}
         </span>
       </div>
       
@@ -54,12 +55,13 @@
         </div>
         
         <!-- Save Button -->
-        <div class="flex gap-3">
+<div class="flex flex-col sm:flex-row gap-3">
           <button 
             @click="saveWatermark"
             :disabled="!hasUnsavedChanges || saving"
-            class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
+            <Icon name="save" :size="18" class="mr-2" />
             {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
           </button>
           
@@ -76,7 +78,7 @@
     
     <!-- Price Configuration -->
     <div class="card mb-6">
-      <h2 class="text-xl font-semibold mb-6">Precio por Foto</h2>
+      <h2 class="text-lg sm:text-xl font-semibold mb-6">Precio por Foto</h2>
       
       <div class="space-y-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -124,12 +126,13 @@
           </div>
         </div>
         
-        <div class="flex gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
           <button 
             @click="savePrice"
             :disabled="!hasPriceChanges || savingPrice"
-            class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
+            <Icon name="save" :size="18" class="mr-2" />
             {{ savingPrice ? 'Guardando...' : 'Guardar Precio' }}
           </button>
           
@@ -146,7 +149,7 @@
     
     <!-- System Info -->
     <div class="card bg-gray-50">
-      <h2 class="text-xl font-semibold mb-4">Información del Sistema</h2>
+      <h2 class="text-lg sm:text-xl font-semibold mb-4">Información del Sistema</h2>
       
       <div class="space-y-2 text-sm">
         <div class="flex justify-between py-2 border-b border-gray-200">
@@ -161,7 +164,10 @@
         
         <div class="flex justify-between py-2">
           <span class="text-gray-600">Estado del sistema:</span>
-          <span class="font-medium text-green-600">✓ Operativo</span>
+          <span class="font-medium text-green-600 flex items-center">
+            <Icon name="check" :size="16" class="mr-1" />
+            Operativo
+          </span>
         </div>
       </div>
     </div>
@@ -173,6 +179,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useAdminStore } from '@/stores/admin'
 import { useCartStore } from '@/stores/cart'
+import Icon from '@/components/Icon.vue'
 import adminService from '@/services/adminService'
 
 const toast = useToast()

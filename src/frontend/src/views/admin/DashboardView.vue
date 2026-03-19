@@ -1,18 +1,16 @@
 <template>
   <div>
-    <h1 class="text-3xl font-bold mb-8">Dashboard</h1>
+    <h1 class="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Dashboard</h1>
     
     <!-- Google Photos Connection Alert -->
     <div v-if="!googlePhotosConnected && !checkingGoogle" class="mb-6 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg">
       <div class="flex items-start">
         <div class="flex-shrink-0">
-          <svg class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
+          <Icon name="alert" :size="24" class="text-yellow-400" />
         </div>
         <div class="ml-3 flex-1">
           <h3 class="text-sm font-medium text-yellow-800">
-            ⚠️ Acción Requerida: Conectar Google Photos
+            <Icon name="alert" :size="16" class="inline" /> Acción Requerida: Conectar Google Photos
           </h3>
           <div class="mt-2 text-sm text-yellow-700">
             <p>La cuenta de Google Photos no está conectada. Los clientes no podrán ver álbumes hasta que conecte la cuenta <strong>ahumada.enzo@gmail.com</strong>.</p>
@@ -36,15 +34,15 @@
     
     <div v-else>
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div class="card hover:shadow-lg transition-shadow">
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-600 text-sm font-medium">Pedidos Totales</p>
-              <p class="text-3xl font-bold mt-1 text-gray-900">{{ stats.totalOrders }}</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-gray-900">{{ stats.totalOrders }}</p>
               <p class="text-xs text-gray-500 mt-1">{{ stats.totalPhotos }} fotos</p>
             </div>
-            <div class="text-4xl">📦</div>
+            <Icon name="package" :size="40" class="text-gray-400" />
           </div>
         </div>
         
@@ -52,10 +50,10 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-600 text-sm font-medium">Pedidos Pendientes</p>
-              <p class="text-3xl font-bold mt-1 text-yellow-600">{{ stats.pendingOrders }}</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-yellow-600">{{ stats.pendingOrders }}</p>
               <p class="text-xs text-gray-500 mt-1">Requieren acción</p>
             </div>
-            <div class="text-4xl">⏳</div>
+            <Icon name="clock" :size="40" class="text-yellow-400" />
           </div>
         </div>
         
@@ -63,10 +61,10 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-600 text-sm font-medium">Ingresos Totales</p>
-              <p class="text-3xl font-bold mt-1 text-green-600">${{ formatCurrency(stats.totalRevenue) }}</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-green-600">${{ formatCurrency(stats.totalRevenue) }}</p>
               <p class="text-xs text-gray-500 mt-1">{{ stats.confirmedOrders }} pedidos pagados</p>
             </div>
-            <div class="text-4xl">💰</div>
+            <Icon name="dollar" :size="40" class="text-green-400" />
           </div>
         </div>
         
@@ -74,10 +72,10 @@
           <div class="flex items-center justify-between">
             <div>
               <p class="text-gray-600 text-sm font-medium">Álbumes Bloqueados</p>
-              <p class="text-3xl font-bold mt-1 text-red-600">{{ adminStore.blockedAlbums.size }}</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-red-600">{{ adminStore.blockedAlbums.size }}</p>
               <p class="text-xs text-gray-500 mt-1">No visibles para clientes</p>
             </div>
-            <div class="text-4xl">🚫</div>
+            <Icon name="ban" :size="40" class="text-red-400" />
           </div>
         </div>
       </div>
@@ -85,66 +83,64 @@
       <!-- Recent Orders -->
       <div class="card mb-6">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-semibold flex items-center">
-            <span class="mr-2">📋</span>
+          <h2 class="text-lg sm:text-xl font-semibold flex items-center">
+            <Icon name="file-text" :size="20" class="mr-2" />
             Pedidos Recientes
           </h2>
           <router-link 
             to="/admin/orders" 
             class="text-primary-600 hover:text-primary-700 text-sm font-medium flex items-center transition-colors"
           >
-            Ver todos
-            <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
+            <span class="hidden sm:inline">Ver todos</span>
+            <Icon name="chevron-right" :size="16" class="ml-1" />
           </router-link>
         </div>
         
         <div v-if="recentOrders.length === 0" class="text-center py-12">
-          <div class="text-6xl mb-4">📭</div>
+          <Icon name="package" :size="64" class="mx-auto mb-4 text-gray-300" />
           <p class="text-gray-500 text-lg font-medium">No hay pedidos recientes</p>
           <p class="text-gray-400 text-sm mt-2">Los pedidos aparecerán aquí cuando los clientes realicen compras</p>
         </div>
         
-        <div v-else class="overflow-x-auto">
-          <table class="w-full">
+        <div v-else class="overflow-x-auto -mx-4 sm:mx-0">
+          <table class="w-full min-w-[640px]">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Pedido</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fotos</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+                <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID Pedido</th>
+                <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Cliente</th>
+                <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fotos</th>
+                <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+                <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Fecha</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 bg-white">
               <tr v-for="order in recentOrders" :key="order.id" class="hover:bg-gray-50 transition-colors">
-                <td class="px-4 py-3">
-                  <span class="text-sm font-mono text-gray-900">#{{ order.id.substring(0, 8) }}</span>
+                <td class="px-2 sm:px-4 py-3">
+                  <span class="text-xs sm:text-sm font-mono text-gray-900">#{{ order.id.substring(0, 8) }}</span>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-2 sm:px-4 py-3 hidden md:table-cell">
                   <div class="text-sm text-gray-900">{{ order.userEmail }}</div>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-2 sm:px-4 py-3">
                   <div class="flex items-center">
-                    <span class="text-sm font-medium text-gray-900">{{ order.photos.length }}</span>
-                    <span class="ml-1 text-xs text-gray-500">fotos</span>
+                    <span class="text-xs sm:text-sm font-medium text-gray-900">{{ order.photos.length }}</span>
+                    <span class="ml-1 text-xs text-gray-500 hidden sm:inline">fotos</span>
                   </div>
                 </td>
-                <td class="px-4 py-3">
-                  <span class="text-sm font-semibold text-gray-900">${{ formatCurrency(order.totalAmount) }}</span>
-                  <span class="text-xs text-gray-500 ml-1">{{ order.currency }}</span>
+                <td class="px-2 sm:px-4 py-3">
+                  <span class="text-xs sm:text-sm font-semibold text-gray-900">${{ formatCurrency(order.totalAmount) }}</span>
+                  <span class="text-xs text-gray-500 ml-1 hidden sm:inline">{{ order.currency }}</span>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-2 sm:px-4 py-3">
                   <span 
-                    class="px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
+                    class="px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap"
                     :class="getStatusClass(order.status)"
                   >
                     {{ getStatusText(order.status) }}
                   </span>
                 </td>
-                <td class="px-4 py-3">
+                <td class="px-2 sm:px-4 py-3 hidden lg:table-cell">
                   <div class="text-sm text-gray-900">{{ formatDate(order.createdAt) }}</div>
                   <div v-if="order.paidAt" class="text-xs text-green-600">
                     Pagado: {{ formatDate(order.paidAt) }}
@@ -157,10 +153,10 @@
       </div>
       
       <!-- Order Status Summary -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
         <div class="card">
-          <h2 class="text-xl font-semibold mb-6 flex items-center">
-            <span class="mr-2">📊</span>
+          <h2 class="text-lg sm:text-xl font-semibold mb-6 flex items-center">
+            <Icon name="trending-up" :size="20" class="mr-2" />
             Resumen por Estado
           </h2>
           
@@ -168,31 +164,29 @@
             <div v-for="status in orderStatusSummary" :key="status.key" 
                  class="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 transition-colors">
               <div class="flex items-center">
-                <span class="text-2xl mr-3">{{ status.icon }}</span>
+                <Icon :name="status.icon" :size="24" class="mr-3" :class="status.colorClass" />
                 <div>
                   <p class="text-sm font-medium text-gray-900">{{ status.label }}</p>
-                  <p class="text-xs text-gray-500">{{ status.description }}</p>
+                  <p class="text-xs text-gray-500 hidden sm:block">{{ status.description }}</p>
                 </div>
               </div>
               <div class="text-right">
-                <p class="text-2xl font-bold" :class="status.colorClass">{{ status.count }}</p>
-                <p class="text-xs text-gray-500">pedidos</p>
+                <p class="text-xl sm:text-2xl font-bold" :class="status.colorClass">{{ status.count }}</p>
+                <p class="text-xs text-gray-500 hidden sm:block">pedidos</p>
               </div>
             </div>
           </div>
         </div>
         
         <div class="card">
-          <h2 class="text-xl font-semibold mb-6 flex items-center">
-            <span class="mr-2">💡</span>
+          <h2 class="text-lg sm:text-xl font-semibold mb-6 flex items-center">
+            <Icon name="info" :size="20" class="mr-2" />
             Información Rápida
           </h2>
           
           <div class="space-y-4">
             <div class="flex items-start p-3 bg-blue-50 rounded-lg">
-              <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-              </svg>
+              <Icon name="dollar" :size="20" class="text-blue-600 mt-0.5 mr-3 flex-shrink-0" />
               <div>
                 <p class="text-sm font-medium text-blue-900">Promedio por Pedido</p>
                 <p class="text-lg font-bold text-blue-600">${{ formatCurrency(averageOrderValue) }}</p>
@@ -200,9 +194,7 @@
             </div>
             
             <div class="flex items-start p-3 bg-purple-50 rounded-lg">
-              <svg class="w-5 h-5 text-purple-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-              </svg>
+              <Icon name="image" :size="20" class="text-purple-600 mt-0.5 mr-3 flex-shrink-0" />
               <div>
                 <p class="text-sm font-medium text-purple-900">Fotos por Pedido</p>
                 <p class="text-lg font-bold text-purple-600">{{ averagePhotosPerOrder }}</p>
@@ -210,9 +202,7 @@
             </div>
             
             <div class="flex items-start p-3 bg-green-50 rounded-lg">
-              <svg class="w-5 h-5 text-green-600 mt-0.5 mr-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-              </svg>
+              <Icon name="check-circle" :size="20" class="text-green-600 mt-0.5 mr-3 flex-shrink-0" />
               <div>
                 <p class="text-sm font-medium text-green-900">Tasa de Conversión</p>
                 <p class="text-lg font-bold text-green-600">{{ conversionRate }}%</p>
@@ -229,6 +219,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminStore } from '@/stores/admin'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
+import Icon from '@/components/Icon.vue'
 import ordersService from '@/services/ordersService'
 import adminService from '@/services/adminService'
 
@@ -271,7 +262,7 @@ const orderStatusSummary = computed(() => {
       key: 'Pending',
       label: 'Pendiente',
       description: 'Recién creados',
-      icon: '⏳',
+      icon: 'clock',
       count: allOrders.value.filter(o => o.status === 'Pending').length,
       colorClass: 'text-yellow-600'
     },
@@ -279,7 +270,7 @@ const orderStatusSummary = computed(() => {
       key: 'AwaitingPayment',
       label: 'Esperando Pago',
       description: 'Pago en proceso',
-      icon: '💳',
+      icon: 'dollar',
       count: allOrders.value.filter(o => o.status === 'AwaitingPayment').length,
       colorClass: 'text-orange-600'
     },
@@ -287,7 +278,7 @@ const orderStatusSummary = computed(() => {
       key: 'PaymentConfirmed',
       label: 'Pagado',
       description: 'Pago confirmado',
-      icon: '✅',
+      icon: 'check-circle',
       count: allOrders.value.filter(o => o.status === 'PaymentConfirmed').length,
       colorClass: 'text-green-600'
     },
@@ -295,7 +286,7 @@ const orderStatusSummary = computed(() => {
       key: 'Processing',
       label: 'Procesando',
       description: 'En preparación',
-      icon: '⚙️',
+      icon: 'settings',
       count: allOrders.value.filter(o => o.status === 'Processing').length,
       colorClass: 'text-blue-600'
     },
@@ -303,7 +294,7 @@ const orderStatusSummary = computed(() => {
       key: 'Completed',
       label: 'Completado',
       description: 'Entregados',
-      icon: '🎉',
+      icon: 'check',
       count: allOrders.value.filter(o => o.status === 'Completed').length,
       colorClass: 'text-purple-600'
     },
@@ -311,7 +302,7 @@ const orderStatusSummary = computed(() => {
       key: 'Cancelled',
       label: 'Cancelado',
       description: 'Cancelados',
-      icon: '❌',
+      icon: 'x-circle',
       count: allOrders.value.filter(o => o.status === 'Cancelled').length,
       colorClass: 'text-red-600'
     }
