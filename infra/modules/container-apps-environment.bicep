@@ -4,12 +4,13 @@ param name string
 @description('Location for the Container Apps Environment')
 param location string
 
-@description('Log Analytics Workspace ID')
-param logAnalyticsWorkspaceId string
+@description('Log Analytics Workspace Name')
+param logAnalyticsWorkspaceName string
 
-@description('Log Analytics Workspace Key')
-@secure()
-param logAnalyticsWorkspaceKey string
+// Reference to existing Log Analytics Workspace
+resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
+  name: logAnalyticsWorkspaceName
+}
 
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: name
@@ -18,8 +19,8 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2024-03-01'
     appLogsConfiguration: {
       destination: 'log-analytics'
       logAnalyticsConfiguration: {
-        customerId: logAnalyticsWorkspaceId
-        sharedKey: logAnalyticsWorkspaceKey
+        customerId: logAnalyticsWorkspace.properties.customerId
+        sharedKey: logAnalyticsWorkspace.listKeys().primarySharedKey
       }
     }
   }

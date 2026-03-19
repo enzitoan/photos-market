@@ -91,9 +91,12 @@ module keyVault 'modules/key-vault.bicep' = {
     googleOAuthClientId: googleOAuthClientId
     googleOAuthClientSecret: googleOAuthClientSecret
     jwtSecretKey: jwtSecretKey
-    cosmosDbConnectionString: cosmosDb.outputs.connectionString
+    cosmosDbAccountName: cosmosDbAccountName
     googleDriveCredentials: googleDriveCredentials
   }
+  dependsOn: [
+    cosmosDb
+  ]
 }
 
 // Container Apps Environment
@@ -102,9 +105,11 @@ module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
   params: {
     name: containerAppsEnvironmentName
     location: location
-    logAnalyticsWorkspaceId: logAnalytics.outputs.workspaceId
-    logAnalyticsWorkspaceKey: logAnalytics.outputs.workspaceKey
+    logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
   }
+  dependsOn: [
+    logAnalytics
+  ]
 }
 
 // Backend Container App

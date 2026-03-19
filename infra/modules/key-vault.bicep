@@ -16,13 +16,17 @@ param googleOAuthClientSecret string
 @secure()
 param jwtSecretKey string
 
-@description('CosmosDB Connection String')
-@secure()
-param cosmosDbConnectionString string
+@description('CosmosDB Account Name')
+param cosmosDbAccountName string
 
 @description('Google Drive Service Account Credentials JSON')
 @secure()
 param googleDriveCredentials string
+
+// Reference to existing CosmosDB account
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing = {
+  name: cosmosDbAccountName
+}
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: name
@@ -69,7 +73,7 @@ resource cosmosDbConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-
   parent: keyVault
   name: 'CosmosDbConnectionString'
   properties: {
-    value: cosmosDbConnectionString
+    value: 'AccountEndpoint=${cosmosAccount.properties.documentEndpoint};AccountKey=${cosmosAccount.listKeys().primaryMasterKey};'
   }
 }
 

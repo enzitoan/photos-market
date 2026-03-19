@@ -38,16 +38,17 @@ jobs:
             --location ${{ env.AZURE_REGION }}
 
       - name: Deploy Bicep infrastructure
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
+          GOOGLE_DRIVE_CREDENTIALS: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
         run: |
           az deployment group create \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --template-file ./infra/main.bicep \
-            --parameters ./infra/main.bicepparam \
-            --parameters googleOAuthClientId=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }} \
-            --parameters googleOAuthClientSecret=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }} \
-            --parameters jwtSecretKey=${{ secrets.JWT_SECRET_KEY }} \
-            --parameters googleDriveRootFolderId=${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }} \
-            --parameters googleDriveCredentials=${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
+            --parameters ./infra/main.bicepparam
 
       - name: Show deployment outputs
         run: |

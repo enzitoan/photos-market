@@ -107,5 +107,5 @@ resource photographerSettingsContainer 'Microsoft.DocumentDB/databaseAccounts/sq
 }
 
 output id string = cosmosAccount.id
+output name string = cosmosAccount.name
 output endpoint string = cosmosAccount.properties.documentEndpoint
-output connectionString string = 'AccountEndpoint=${cosmosAccount.properties.documentEndpoint};AccountKey=${cosmosAccount.listKeys().primaryMasterKey};'
