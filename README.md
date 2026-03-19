@@ -115,6 +115,8 @@ PhotosMarket/
 
 - [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - [Node.js 18+](https://nodejs.org/) y npm
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (para deployment con contenedores)
+- [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli) (para despliegue en Azure)
 - Cuenta [Azure](https://portal.azure.com/) con Cosmos DB (opcional, tiene fallback a memoria)
 - Proyecto [Google Cloud](https://console.cloud.google.com/) con Drive API habilitada
 - Credenciales OAuth 2.0 de Google
@@ -154,52 +156,95 @@ PhotosMarket/
    - Backend API: http://localhost:5000
    - Swagger: http://localhost:5000/swagger
 
-Para instrucciones detalladas, consulta [SETUP.md](SETUP.md) y [RUNNING.md](RUNNING.md).
-
 ## 🐳 Despliegue con Docker
 
-PhotosMarket incluye soporte completo para Docker y despliegue en Azure.
+PhotosMarket incluye soporte completo para Docker y despliegue en Azure Container Apps.
 
 ### Ejecución Local con Docker
 
 ```bash
-# Copiar archivo de configuración
+# 1. Copiar archivo de configuración
 cp .env.example .env
-# Editar .env con tus credenciales
 
-# Construir y ejecutar
+# 2. Editar .env con tus credenciales
+# Configurar: Google OAuth, JWT Secret, Google Drive Folder ID, etc.
+
+# 3. Construir y ejecutar todos los servicios
 docker-compose up -d
 
-# Ver logs
+# 4. Ver logs en tiempo real
 docker-compose logs -f
 
-# Detener
+# 5. Ver logs de un servicio específico
+docker-compose logs -f backend
+docker-compose logs -f frontend
+
+# 6. Detener servicios
 docker-compose down
+
+# 7. Reconstruir imágenes después de cambios en código
+docker-compose up -d --build
 ```
 
-### Despliegue en Azure
+**URLs de acceso con Docker:**
+- Frontend: http://localhost:3001
+- Backend API: http://localhost:5000
+- Swagger: http://localhost:5000/swagger
 
-El proyecto incluye scripts de Bicep para desplegar en Azure Container Apps:
+### Despliegue en Azure Container Apps
+
+El proyecto incluye infraestructura como código (Bicep) y scripts automatizados para desplegar en Azure:
+
+#### Opción 1: Script Automatizado (Recomendado)
 
 ```powershell
-# Configurar variables de entorno
-$env:GOOGLE_OAUTH_CLIENT_ID = "tu-client-id"
+# 1. Configurar variables de entorno requeridas
+$env:GOOGLE_OAUTH_CLIENT_ID = "tu-client-id.apps.googleusercontent.com"
 $env:GOOGLE_OAUTH_CLIENT_SECRET = "tu-client-secret"
-$env:JWT_SECRET_KEY = "tu-jwt-secret-key"
+$env:JWT_SECRET_KEY = "tu-jwt-secret-minimo-32-caracteres"
 
-# Desplegar a Azure
+# 2. Ejecutar script de despliegue completo
 cd scripts
-.\deploy-azure.ps1 -ResourceGroupName "rg-photosmarket-dev" -Environment "dev"
+.\Deploy-PhotosMarket.ps1 -ResourceGroupName "rg-photosmarket-dev" -Environment "dev"
+
+# 3. Desplegar solo backend o frontend
+.\Deploy-PhotosMarket.ps1 -Component Backend
+.\Deploy-PhotosMarket.ps1 -Component Frontend
+
+# 4. Verificar estado del despliegue
+.\Get-DeploymentStatus.ps1 -ResourceGroupName "rg-photosmarket-dev"
+```
+
+#### Opción 2: Despliegue Manual con Bicep
+
+```bash
+# 1. Login a Azure
+az login
+
+# 2. Crear Resource Group
+az group create \
+  --name rg-photosmarket-dev \
+  --location eastus
+
+# 3. Desplegar infraestructura
+az deployment group create \
+  --resource-group rg-photosmarket-dev \
+  --template-file infra/main.bicep \
+  --parameters infra/main.bicepparam \
+  --parameters environmentName=dev
 ```
 
 **Recursos creados en Azure:**
-- Azure Container Registry (ACR) para imágenes Docker
-- Azure Container Apps para backend y frontend
-- Azure Cosmos DB para base de datos
-- Azure Key Vault para gestión de secretos
-- Log Analytics para monitoreo
+- **Azure Container Registry (ACR)** - Almacenamiento de imágenes Docker
+- **Azure Container Apps** - Hosting del backend (.NET 8) y frontend (Vue.js)
+- **Azure Cosmos DB** - Base de datos NoSQL para almacenamiento persistente
+- **Azure Key Vault** - Gestión segura de secretos y credenciales
+- **Log Analytics Workspace** - Monitoreo centralizado y logs
+- **Container Apps Environment** - Entorno compartido para las apps
 
-Para más detalles, consulta [DOCKER-DEPLOYMENT.md](DOCKER-DEPLOYMENT.md).
+Para más detalles sobre la infraestructura, consulta:
+- [Documentación de Infraestructura](infra/README.md)
+- [Documentación de Scripts](scripts/README.md)
 
 ## 🔌 Endpoints API Principales
 
@@ -468,19 +513,278 @@ Puertos permitidos por defecto:
 
 ## 📖 Documentación Adicional
 
-- 📘 [Especificación Completa del Sistema](specification/README.md) - Arquitectura detallada, flujos, modelos
-- 🔧 [Guía de Configuración](SETUP.md) - Setup paso a paso de Google Cloud, Azure, etc.
-- ▶️ [Instrucciones de Ejecución](RUNNING.md) - Comandos para iniciar el sistema
+- 📘 [Especificación Completa del Sistema](specification/README.md) - Arquitectura detallada, flujos, modelos de datos
+- 🏗️ [Infraestructura Azure (Bicep)](infra/README.md) - Templates de Bicep, arquitectura cloud, parámetros
+- 🚀 [Scripts de Despliegue](scripts/README.md) - Guía de scripts de PowerShell para deployment
+- 📋 [Configuración de Scripts](scripts/CONFIG.md) - Variables de entorno y configuración de deployment
+� Manual de Uso
+
+### 🔐 Configuración Inicial
+
+#### 1. Crear Proyecto en Google Cloud
+
+1. Ir a [Google Cloud Console](https://console.cloud.google.com/)
+2. Crear nuevo proyecto o seleccionar uno existente
+3. Habilitar **Google Drive API**:
+   - Ir a "APIs & Services" → "Library"
+   - Buscar "Google Drive API"
+   - Hacer clic en "Enable"
+
+#### 2. Configurar OAuth 2.0
+
+1. En Google Cloud Console, ir a "APIs & Services" → "Credentials"
+2. Hacer clic en "Create Credentials" → "OAuth client ID"
+3. Tipo de aplicación: **Web application**
+4. Configurar:
+   - **Name**: PhotosMarket
+   - **Authorized redirect URIs**:
+     - `http://localhost:3001/callback` (desarrollo)
+     - `https://tu-dominio.com/callback` (producción)
+5. Guardar **Client ID** y **Client Secret**
+
+#### 3. Crear Credenciales de Service Account
+
+1. En "Credentials", hacer clic en "Create Credentials" → "Service account"
+2. Completar información básica
+3. Descargar el archivo JSON de credenciales
+4. Renombrar a `google-drive-credentials.json`
+5. Colocar en `src/backend/google-drive-credentials.json`
+
+#### 4. Configurar Google Drive
+
+1. Crear carpeta raíz en Google Drive para las fotos
+2. Compartir la carpeta con el email del Service Account
+3. Copiar el **Folder ID** de la URL:
+   - URL example: `https://drive.google.com/drive/folders/1ABC...XYZ`
+   - Folder ID: `1ABC...XYZ`
+
+#### 5. Configurar Variables de Entorno
+
+**Para desarrollo local** - Editar `src/backend/appsettings.json`:
+
+```json
+{
+  "GoogleOAuth": {
+    "ClientId": "TU_CLIENT_ID.apps.googleusercontent.com",
+    "ClientSecret": "TU_CLIENT_SECRET",
+    "RedirectUri": "http://localhost:3001/callback"
+  },
+  "GoogleDrive": {
+    "RootFolderId": "TU_FOLDER_ID_DE_GOOGLE_DRIVE"
+  },
+  "Jwt": {
+    "SecretKey": "minimo-32-caracteres-super-secreto-para-seguridad"
+  }
+}
+```
+
+**Para Docker** - Editar `.env`:
+
+```bash
+GOOGLE_OAUTH_CLIENT_ID=TU_CLIENT_ID
+GOOGLE_OAUTH_CLIENT_SECRET=TU_CLIENT_SECRET
+GOOGLE_DRIVE_ROOT_FOLDER_ID=TU_FOLDER_ID
+JWT_SECRET_KEY=tu-secreto-de-32-caracteres-minimo
+```
+
+### 👤 Guía de Usuario (Cliente)
+
+#### 1. Registro e Inicio de Sesión
+
+1. Acceder a la aplicación: http://localhost:3001
+2. Hacer clic en **"Continuar con Google"**
+3. Seleccionar cuenta de Google
+4. Autorizar permisos de la aplicación
+5. Automáticamente redirigido a la página de álbumes
+
+#### 2. Explorar Álbumes
+
+- Ver todos los álbumes disponibles en la página principal
+- Hacer clic en un álbum para ver sus fotos
+- Las miniaturas tienen marca de agua para protección
+
+#### 3. Seleccionar Fotos
+
+1. Navegar a un álbum
+2. Hacer clic en una foto para ver en tamaño grande (modal)
+3. Hacer clic en el botón **"Agregar al Carrito"** (icono de carrito)
+4. El contador del carrito se actualiza automáticamente
+5. Repetir para todas las fotos deseadas
+
+#### 4. Crear Pedido
+
+1. Hacer clic en el **icono del carrito** en la barra superior
+2. Revisar fotos seleccionadas
+3. Ver precio total calculado
+4. Hacer clic en **"Crear Pedido"**
+5. Se genera un número de pedido único
+6. Recibir instrucciones de pago (transferencia electrónica)
+
+#### 5. Realizar Pago
+
+1. Realizar transferencia bancaria por el monto indicado
+2. Usar como referencia el **número de pedido**
+3. Esperar confirmación del fotógrafo
+
+#### 6. Descargar Fotos
+
+1. Una vez confirmado el pago por el administrador:
+2. Recibir **email con enlace de descarga** (si emails habilitados)
+3. O ir a **"Mis Pedidos"** en el menú
+4. Hacer clic en el pedido confirmado
+5. Hacer clic en **"Descargar Fotos"**
+6. Descargar fotos en resolución original (sin marca de agua)
+7. **¡Importante!** El enlace expira en **72 horas**
+
+### 👨‍💼 Guía de Administrador
+
+#### 1. Acceso al Panel de Administración
+
+1. Ir a: http://localhost:3001/admin
+2. Iniciar sesión con cuenta autorizada: `ahumada.enzo@gmail.com`
+3. Continuar con Google OAuth
+
+#### 2. Autenticación con Google Drive
+
+**Primera vez:**
+1. En el panel admin, ir a **"Configuración"**
+2. Hacer clic en **"Autenticar Google Drive"**
+3. Autorizar la aplicación para acceder a Google Drive
+4. Confirmar acceso exitoso
+
+#### 3. Gestión de Álbumes
+
+**Ver álbumes:**
+1. Ir a **"Gestión de Álbumes"**
+2. Ver lista de álbumes sincronizados desde Google Drive
+
+**Bloquear/Desbloquear álbum:**
+1. Encontrar el álbum deseado
+2. Hacer clic en el interruptor **"Bloqueado/Desbloqueado"**
+3. Los álbumes bloqueados no son visibles para clientes
+4. Usar para ocultar álbumes privados o en proceso
+
+#### 4. Gestión de Pedidos
+
+**Ver todos los pedidos:**
+1. Ir a **"Gestión de Pedidos"**
+2. Ver lista completa de pedidos con estados:
+   - 🟡 **Pending** - Esperando pago
+   - 🟢 **PaymentConfirmed** - Pago confirmado, listo para descarga
+   - ✅ **Completed** - Pedido descargado y completado
+   - ❌ **Cancelled** - Pedido cancelado
+
+**Confirmar pago recibido:**
+1. Cliente te notifica que realizó la transferencia
+2. Verificar pago en tu cuenta bancaria
+3. En la lista de pedidos, encontrar el pedido (estado "Pending")
+4. Hacer clic en **"Confirmar Pago"**
+5. El sistema automáticamente:
+   - Cambia estado a "PaymentConfirmed"
+   - Genera enlace de descarga único
+   - Envía email al cliente (si habilitado)
+
+**Marcar como completado:**
+1. Después de que el cliente descargue las fotos
+2. Hacer clic en **"Marcar Completado"**
+3. El pedido pasa a estado "Completed"
+
+#### 5. Dashboard y Reportes
+
+1. Ir a **"Dashboard"**
+2. Ver estadísticas:
+   - Total de pedidos
+   - Ingresos totales
+   - Pedidos por estado
+   - Fotos más vendidas
+   - Tendencias de ventas
+
+#### 6. Configuración del Sistema
+
+1. Ir a **"Configuración"**
+2. Ajustar:
+   - Precio por foto
+   - Moneda
+   - Texto de marca de agua
+   - Tiempo de expiración de enlaces
+   - Configuración de Google Drive
+   - Configuración de email
+
+### 🔧 Casos de Uso Comunes
+
+#### Agregar Nuevas Fotos
+
+1. Subir fotos a la carpeta de Google Drive configurada
+2. Organizar en subcarpetas (cada subcarpeta = un álbum)
+3. La aplicación sincroniza automáticamente
+4. Los nuevos álbumes aparecen inmediatamente
+5. Si deseas ocultar temporalmente, bloquear desde el panel admin
+
+#### Cliente No Recibe Email
+
+**Si los emails están deshabilitados:**
+1. Cliente debe revisar sus pedidos en "Mis Pedidos"
+2. El enlace de descarga está disponible ahí
+
+**Si los emails están habilitados pero no llegan:**
+1. Verificar configuración SMTP en `appsettings.json`
+2. Verificar que la contraseña de aplicación Gmail sea correcta
+3. Revisar carpeta de spam del cliente
+4. Como alternativa, el cliente puede usar "Mis Pedidos"
+
+#### Enlace de Descarga Expirado
+
+**Después de 72 horas:**
+1. El enlace de descarga expira automáticamente
+2. Cliente debe contactar al administrador
+3. Administrador puede:
+   - Opción 1: Generar nuevo enlace (implementar funcionalidad)
+   - Opción 2: Marcar pedido como "Pending" y confirmar nuevamente
+4. Se genera nuevo enlace válido por 72 horas más
+
+#### Cambiar Precio de Fotos
+
+1. Ir a panel de administración → **"Configuración"**
+2. Modificar **"Precio por Foto"**
+3. Guardar cambios
+4. Los nuevos pedidos usarán el precio actualizado
+5. Los pedidos existentes mantienen su precio original
+
+#### Deshabilitar un Álbum Temporalmente
+
+1. Panel admin → **"Gestión de Álbumes"**
+2. Encontrar el álbum
+3. Activar **"Bloqueado"**
+4. Los clientes no verán este álbum
+5. Para reactivar, desmarcar "Bloqueado"
+
+### 🛡️ Seguridad y Buenas Prácticas
+
+1. **Nunca compartir credenciales** en el código o repositorios
+2. **Usar variables de entorno** para secretos en producción
+3. **Habilitar HTTPS** en producción (automático con Azure Container Apps)
+4. **Rotar JWT Secret** periódicamente
+5. **Monitorear accesos** desde el panel de Log Analytics
+6. **Backup de Cosmos DB** configurar snapshots automáticos
+7. **Actualizar dependencias** regularmente con `npm audit` y `dotnet outdated`
 
 ## 🐛 Troubleshooting
 
 ### Backend no inicia
-```bash
+```powershell
 # Verificar que el puerto 5000 está libre
 Get-NetTCPConnection -LocalPort 5000 -ErrorAction SilentlyContinue
 
 # Detener proceso en puerto 5000
 Get-NetTCPConnection -LocalPort 5000 | Select -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force }
+
+# Verificar que .NET 8.0 SDK está instalado
+dotnet --version
+
+# Limpiar y reconstruir
+cd src/backend
+dotnet clean
+dotnet build
 ```
 
 ### Frontend no inicia
@@ -488,15 +792,83 @@ Get-NetTCPConnection -LocalPort 5000 | Select -ExpandProperty OwningProcess | Fo
 # Limpiar node_modules y reinstalar
 rm -rf node_modules package-lock.json
 npm install
+
+# Verificar versión de Node.js (requiere 18+)
+node --version
+
+# Limpiar cache de Vite
+npm run dev -- --force
+```
+
+### Docker no construye las imágenes
+```bash
+# Verificar que Docker Desktop está corriendo
+docker ps
+
+# Limpiar cache de Docker
+docker system prune -a
+
+# Reconstruir desde cero
+docker-compose down -v
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
 ### Cosmos DB no conecta
-- Verificar que el emulador está corriendo (Windows)
-- O configurar `UseRealCosmosDb: false` para usar in-memory
+- **Desarrollo**: Verificar `UseRealCosmosDb: false` en appsettings.json para usar in-memory
+- **Producción**: Verificar connection string en Azure Portal
+- **Emulador local**: Descargar e instalar [Azure Cosmos DB Emulator](https://docs.microsoft.com/azure/cosmos-db/local-emulator)
+- **Warning**: In-memory storage pierde datos al reiniciar
 
 ### Google OAuth falla
-- Verificar que `RedirectUri` coincide con Google Cloud Console
-- Verificar que los Scopes están correctos
+- Verificar que `RedirectUri` en appsettings.json coincide **exactamente** con Google Cloud Console
+- Verificar que los Scopes son correctos: `["openid", "email", "profile"]`
+- Revisar que ClientId y ClientSecret sean válidos y no tengan espacios extra
+- Verificar que la Authorized Redirect URI está configurada en Google Cloud Console
+- Asegurarse de que la aplicación OAuth está en modo "Testing" o "Production"
+
+### Google Drive API no encuentra fotos
+- Verificar que `google-drive-credentials.json` existe en `src/backend/`
+- Verificar que el Service Account tiene acceso a la carpeta de Drive
+- Verificar que el `RootFolderId` es correcto
+- Revisar permisos: la carpeta debe estar compartida con el Service Account email
+
+### Errores de CORS
+- Verificar que frontend está corriendo en puerto 3000, 3001, 3002 o 5173
+- Verificar configuración de CORS en `Program.cs` del backend
+- En producción, agregar el dominio real a la política de CORS
+
+### Emails no se envían
+- Verificar `Email.Enabled: true` en appsettings.json
+- Verificar que `SenderPassword` es una **App Password** de Gmail, no la contraseña normal
+- Verificar configuración SMTP:
+  - Server: `smtp.gmail.com`
+  - Port: `587`
+  - EnableSSL: `true`
+- Revisar logs del backend para errores específicos de SMTP
+
+### Despliegue en Azure falla
+```powershell
+# Verificar login en Azure
+az account show
+
+# Re-login si es necesario
+az login
+
+# Verificar permisos de la suscripción
+az role assignment list --assignee $(az account show --query user.name -o tsv)
+
+# Ver logs de deployment
+az deployment group show \
+  --resource-group rg-photosmarket-dev \
+  --name main
+
+# Ver logs de Container Apps
+az containerapp logs show \
+  --name ca-photosmarket-backend-dev \
+  --resource-group rg-photosmarket-dev \
+  --follow
+```
 - Revisar que ClientId y ClientSecret sean válidos
 
 ## 🤝 Contribución
