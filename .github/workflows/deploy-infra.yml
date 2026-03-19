@@ -44,7 +44,8 @@ jobs:
             --parameters googleOAuthClientId=${{ secrets.GOOGLE_OAUTH_CLIENT_ID }} \
             --parameters googleOAuthClientSecret=${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }} \
             --parameters jwtSecretKey=${{ secrets.JWT_SECRET_KEY }} \
-            --parameters googleDriveRootFolderId=${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
+            --parameters googleDriveRootFolderId=${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }} \
+            --parameters googleDriveCredentials=${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
 
       - name: Show deployment outputs
         run: |
