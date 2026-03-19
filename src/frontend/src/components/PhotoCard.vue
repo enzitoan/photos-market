@@ -11,15 +11,15 @@
       <!-- Watermark Overlay -->
       <div class="watermark-overlay" :data-watermark="watermarkText"></div>
       
-      <!-- Hover Overlay con acciones -->
+      <!-- Overlay con acciones - visible en móvil, hover en desktop -->
       <div 
-        class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
+        class="absolute inset-0 bg-black bg-opacity-40 md:bg-opacity-50 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center"
       >
-        <div class="flex space-x-2">
+        <div class="flex flex-col sm:flex-row gap-2 px-2">
           <button 
-            @click="toggleCart"
+            @click.stop="toggleCart"
             :class="[
-              'px-4 py-2 rounded-lg font-medium transition-colors',
+              'px-3 py-2 sm:px-4 rounded-lg font-medium transition-colors text-sm sm:text-base',
               isInCart ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-800'
             ]"
           >
@@ -27,8 +27,8 @@
           </button>
           
           <button 
-            @click="$emit('view-details', photo)"
-            class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            @click.stop="$emit('view-details', photo)"
+            class="px-3 py-2 sm:px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 text-sm sm:text-base"
           >
             👁️ Ver
           </button>
@@ -47,8 +47,8 @@
     </div>
     
     <!-- Badge si está en el carrito -->
-    <div v-if="isInCart" class="absolute top-2 left-2 badge badge-success">
-      ✓ En carrito
+    <div v-if="isInCart" class="absolute top-2 right-2 bg-green-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg">
+      ✓
     </div>
   </div>
 </template>

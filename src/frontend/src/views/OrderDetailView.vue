@@ -168,19 +168,20 @@
         
         <div class="mb-4">
           <label class="block text-sm font-medium text-gray-700 mb-2">
-            Referencia de Pago
+            Nº de transacción / operación
           </label>
           <input 
             v-model="paymentReference"
             type="text"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            placeholder="Ej: TRANS-123456"
+            placeholder="Ej: 684549824"
           >
         </div>
         
         <div class="bg-blue-50 p-3 rounded-md mb-4">
           <p class="text-sm text-blue-800">
-            💡 Ingresa la referencia o código de tu transacción de pago para confirmar tu pedido.
+            💡 Ingresa el Nº de transacción / operación de tu transferencia de dinero para confirmar tu pedido.
+            (Puedes encontrar este número en el comprobante de pago que te entrega tu banco o plataforma de pago)
           </p>
         </div>
         

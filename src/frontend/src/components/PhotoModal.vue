@@ -4,7 +4,7 @@
     <Transition name="modal">
       <div 
         v-if="show && photo"
-        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-4"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 p-2 sm:p-4"
         @click="closeModal"
       >
         <div 
@@ -14,16 +14,16 @@
           <!-- Close button -->
           <button
             @click="closeModal"
-            class="absolute -top-12 right-0 text-white hover:text-gray-300 text-4xl font-bold z-10"
+            class="absolute -top-8 sm:-top-12 right-0 text-white hover:text-gray-300 text-3xl sm:text-4xl font-bold z-10"
             aria-label="Cerrar"
           >
             ×
           </button>
 
           <!-- Photo info -->
-          <div class="absolute -top-10 left-0 text-white mb-2">
-            <p class="text-sm">{{ photo.filename }}</p>
-            <p v-if="photo.albumTitle" class="text-xs text-gray-300 mt-1">📁 {{ photo.albumTitle }}</p>
+          <div class="absolute -top-8 sm:-top-10 left-0 text-white mb-2">
+            <p class="text-xs sm:text-sm truncate max-w-[60vw] sm:max-w-none">{{ photo.filename }}</p>
+            <p v-if="photo.albumTitle" class="text-xs text-gray-300 mt-1 hidden sm:block">📁 {{ photo.albumTitle }}</p>
           </div>
 
           <!-- Image Container with Watermark -->
@@ -40,18 +40,18 @@
           </div>
 
           <!-- Actions -->
-          <div class="mt-4 flex justify-center gap-4">
+          <div class="mt-3 sm:mt-4 flex flex-col sm:flex-row justify-center gap-2 sm:gap-4">
             <button
               @click="toggleCart"
               :class="[
-                'px-6 py-3 rounded-lg font-medium transition-colors',
+                'px-4 py-2 sm:px-6 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base',
                 isInCart ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-white hover:bg-gray-100 text-gray-800'
               ]"
             >
               {{ isInCart ? '❌ Quitar del carrito' : '➕ Agregar al carrito' }}
             </button>
             
-            <div class="px-6 py-3 bg-primary-600 text-white rounded-lg font-bold">
+            <div class="px-4 py-2 sm:px-6 sm:py-3 bg-primary-600 text-white rounded-lg font-bold text-center text-sm sm:text-base">
               {{ cartStore.currencySymbol }}{{ price }}
             </div>
           </div>

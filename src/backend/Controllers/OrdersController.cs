@@ -182,7 +182,7 @@ public class OrdersController : ControllerBase
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            var order = await _orderService.ConfirmPaymentAsync(orderId, userId);
+            var order = await _orderService.ConfirmPaymentAsync(orderId, userId, request.PaymentReference);
 
             var orderDto = new OrderDto
             {

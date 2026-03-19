@@ -188,6 +188,8 @@ public class AlbumsController : ControllerBase
             {
                 WatermarkText = settings.WatermarkText,
                 WatermarkOpacity = settings.WatermarkOpacity,
+                PhotoPrice = settings.PhotoPrice,
+                Currency = settings.Currency,
                 IsGoogleAuthenticated = !string.IsNullOrEmpty(settings.PhotographerGoogleRefreshToken)
             };
 
@@ -223,6 +225,7 @@ public class AlbumsController : ControllerBase
             settings.WatermarkText = request.WatermarkText;
             settings.WatermarkOpacity = request.WatermarkOpacity;
             settings.PhotoPrice = request.PhotoPrice;
+            settings.Currency = request.Currency;
             
             await _photographerSettingsRepository.UpdateSettingsAsync(settings);
 
@@ -231,6 +234,7 @@ public class AlbumsController : ControllerBase
                 WatermarkText = settings.WatermarkText,
                 WatermarkOpacity = settings.WatermarkOpacity,
                 PhotoPrice = settings.PhotoPrice,
+                Currency = settings.Currency,
                 IsGoogleAuthenticated = !string.IsNullOrEmpty(settings.PhotographerGoogleRefreshToken)
             };
 
@@ -315,6 +319,7 @@ public class PhotographerSettingsDto
     public string WatermarkText { get; set; } = string.Empty;
     public float WatermarkOpacity { get; set; }
     public decimal PhotoPrice { get; set; }
+    public string Currency { get; set; } = "CLP";
     public bool IsGoogleAuthenticated { get; set; }
 }
 
@@ -323,6 +328,7 @@ public class UpdatePhotographerSettingsRequest
     public string WatermarkText { get; set; } = string.Empty;
     public float WatermarkOpacity { get; set; }
     public decimal PhotoPrice { get; set; }
+    public string Currency { get; set; } = "CLP";
 }
 
 public class SetCoverPhotoRequest

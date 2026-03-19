@@ -12,7 +12,7 @@ public interface IOrderService
     Task<Order?> GetOrderByIdAsync(string orderId, string userId);
     Task<List<Order>> GetUserOrdersAsync(string userId);
     Task<List<Order>> GetAllOrdersAsync();
-    Task<Order> ConfirmPaymentAsync(string orderId, string userId);
+    Task<Order> ConfirmPaymentAsync(string orderId, string userId, string paymentReference);
     Task<Order> CompleteOrderAsync(string orderId);
     Task<Order> CancelOrderAsync(string orderId, string userId, bool isAdmin = false);
     Task<DownloadLink> GenerateDownloadLinkAsync(Order order);
@@ -102,7 +102,7 @@ public class OrderService : IOrderService
         return await _orderRepository.GetAllAsync();
     }
 
-    public async Task<Order> ConfirmPaymentAsync(string orderId, string userId)
+    public async Task<Order> ConfirmPaymentAsync(string orderId, string userId, string paymentReference)
     {
         var order = await _orderRepository.GetByIdAsync(orderId, userId);
         
@@ -114,6 +114,7 @@ public class OrderService : IOrderService
 
         order.Status = OrderStatus.Processing;
         order.PaidAt = DateTime.UtcNow;
+        order.PaymentReference = paymentReference;
 
         order = await _orderRepository.UpdateAsync(order);
 

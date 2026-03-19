@@ -182,6 +182,10 @@
                 <span class="font-medium text-gray-700">Fecha de Pago:</span>
                 <p class="text-gray-600 text-green-600">{{ formatDate(selectedOrder.paidAt) }}</p>
               </div>
+              <div v-if="selectedOrder.paymentReference">
+                <span class="font-medium text-gray-700">Nº de Transacción:</span>
+                <p class="text-gray-600 font-mono">{{ selectedOrder.paymentReference }}</p>
+              </div>
             </div>
           </div>
           

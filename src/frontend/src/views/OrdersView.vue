@@ -2,8 +2,8 @@
   <div class="min-h-screen flex flex-col">
     <NavBar />
     
-    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-      <h1 class="text-3xl font-bold mb-8">Mis Pedidos</h1>
+    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
+      <h1 class="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Mis Pedidos</h1>
       
       <LoadingSpinner v-if="loading" message="Cargando pedidos..." />
       
@@ -22,28 +22,28 @@
         </router-link>
       </div>
       
-      <div v-else class="space-y-4">
+      <div v-else class="space-y-3 sm:space-y-4">
         <div 
           v-for="order in orders" 
           :key="order.id"
           class="card hover:shadow-lg transition-shadow cursor-pointer"
           @click="viewOrderDetails(order.id)"
         >
-          <div class="flex justify-between items-start mb-4">
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 mb-3 sm:mb-4">
             <div>
-              <h3 class="font-semibold text-lg">Pedido #{{ order.id.substring(0, 8) }}</h3>
-              <p class="text-sm text-gray-500">{{ formatDate(order.createdAt) }}</p>
+              <h3 class="font-semibold text-base sm:text-lg">Pedido #{{ order.id.substring(0, 8) }}</h3>
+              <p class="text-xs sm:text-sm text-gray-500">{{ formatDate(order.createdAt) }}</p>
             </div>
             
             <span 
-              class="px-3 py-1 rounded-full text-sm font-medium"
+              class="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium self-start"
               :class="getStatusClass(order.status)"
             >
               {{ getStatusText(order.status) }}
             </span>
           </div>
           
-          <div class="space-y-2 text-sm">
+          <div class="space-y-1 sm:space-y-2 text-xs sm:text-sm">
             <div class="flex justify-between">
               <span class="text-gray-600">Fotos:</span>
               <span class="font-medium">{{ order.photos.length }}</span>
@@ -61,13 +61,13 @@
             
             <div v-if="order.paidAt" class="flex justify-between">
               <span class="text-gray-600">Pagado:</span>
-              <span class="font-medium text-green-600">{{ formatDate(order.paidAt) }}</span>
+              <span class="font-medium text-green-600 text-xs sm:text-sm">{{ formatDate(order.paidAt) }}</span>
             </div>
           </div>
           
-          <div class="mt-4 pt-4 border-t">
+          <div class="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
             <button
-              class="text-primary-600 hover:text-primary-700 font-medium flex items-center"
+              class="text-primary-600 hover:text-primary-700 font-medium flex items-center text-sm"
               @click.stop="viewOrderDetails(order.id)"
             >
               <span>Ver detalles</span>

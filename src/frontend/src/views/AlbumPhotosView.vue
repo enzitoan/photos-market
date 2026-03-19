@@ -2,16 +2,16 @@
   <div class="min-h-screen flex flex-col">
     <NavBar />
     
-    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+    <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
       <!-- Album Header -->
-      <div class="mb-8">
-        <button @click="$router.back()" class="text-primary-600 hover:text-primary-700 mb-4 flex items-center">
+      <div class="mb-6 sm:mb-8">
+        <button @click="$router.back()" class="text-primary-600 hover:text-primary-700 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
           <span class="mr-2">←</span> Volver a álbumes
         </button>
         
         <div v-if="album">
-          <h1 class="text-3xl font-bold mb-2">{{ album.title }}</h1>
-          <p class="text-gray-600">{{ photos.length }} fotos disponibles</p>
+          <h1 class="text-2xl sm:text-3xl font-bold mb-2">{{ album.title }}</h1>
+          <p class="text-sm sm:text-base text-gray-600">{{ photos.length }} fotos disponibles</p>
         </div>
       </div>
       
@@ -30,25 +30,25 @@
       
       <div v-else>
         <!-- Filters/Actions -->
-        <div class="mb-6 flex justify-between items-center">
+        <div class="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
           <div>
-            <label class="inline-flex items-center">
+            <label class="inline-flex items-center cursor-pointer">
               <input 
                 type="checkbox" 
                 v-model="showOnlyInCart"
-                class="form-checkbox h-5 w-5 text-primary-600"
+                class="form-checkbox h-4 w-4 sm:h-5 sm:w-5 text-primary-600"
               >
-              <span class="ml-2 text-gray-700">Mostrar solo las del carrito</span>
+              <span class="ml-2 text-gray-700 text-sm sm:text-base">Solo en carrito</span>
             </label>
           </div>
           
-          <div class="text-sm text-gray-600">
-            {{ cartStore.items.length }} fotos en el carrito
+          <div class="text-xs sm:text-sm text-gray-600">
+            🛒 {{ cartStore.items.length }} {{ cartStore.items.length === 1 ? 'foto' : 'fotos' }} en el carrito
           </div>
         </div>
         
         <!-- Photos Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
           <PhotoCard 
             v-for="photo in filteredPhotos" 
             :key="photo.id"

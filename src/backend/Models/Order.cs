@@ -33,6 +33,9 @@ public class Order
 
     [JsonProperty("processedAt")]
     public DateTime? ProcessedAt { get; set; }
+
+    [JsonProperty("paymentReference")]
+    public string? PaymentReference { get; set; }
 }
 
 public class OrderPhoto
