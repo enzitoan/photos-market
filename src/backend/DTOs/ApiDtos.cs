@@ -19,6 +19,16 @@ public class AuthResponse
     public string Email { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public bool IsAdmin { get; set; }
+    public bool NeedsRegistration { get; set; } = false;
+    public string? TempToken { get; set; }
+}
+
+public class CompleteRegistrationRequest
+{
+    public string Phone { get; set; } = string.Empty;
+    public string IdType { get; set; } = string.Empty; // "RUT" o "DNI"
+    public string IdNumber { get; set; } = string.Empty; // RUT o DNI según el tipo
+    public DateTime BirthDate { get; set; }
 }
 
 // Photo DTOs

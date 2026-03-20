@@ -216,4 +216,74 @@ public class AuthController : ControllerBase
             });
         }
     }
+
+    [HttpPost("complete-registration")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> CompleteRegistration([FromBody] CompleteRegistrationRequest request)
+    {
+        try
+        {
+            // Obtener userId del token
+            var token = Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
+            
+            if (string.IsNullOrEmpty(token))
+            {
+                return Unauthorized(new ApiResponse<AuthResponse>
+                {
+                    Success = false,
+                    Message = "Token no proporcionado"
+                });
+            }
+
+            var user = await _authService.GetUserFromTokenAsync(token);
+            
+            if (user == null)
+            {
+                return Unauthorized(new ApiResponse<AuthResponse>
+                {
+                    Success = false,
+                    Message = "Token inválido"
+                });
+            }
+
+            // Completar registro
+            var authResponse = await _authService.CompleteRegistrationAsync(user.Id, request);
+
+            _logger.LogInformation("User {UserId} completed registration successfully", user.Id);
+
+            return Ok(new ApiResponse<AuthResponse>
+            {
+                Success = true,
+                Data = authResponse,
+                Message = "Registro completado exitosamente"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Validation error during registration completion");
+            return BadRequest(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(ex, "Invalid operation during registration completion");
+            return BadRequest(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during registration completion");
+            return BadRequest(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = "Error al completar el registro",
+                Errors = new List<string> { ex.Message }
+            });
+        }
+    }
 }

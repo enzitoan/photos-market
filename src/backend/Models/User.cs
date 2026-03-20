@@ -41,5 +41,20 @@ public class User
     [JsonProperty("lastLoginAt")]
     public DateTime LastLoginAt { get; set; } = DateTime.UtcNow;
 
+    [JsonProperty("phone")]
+    public string? Phone { get; set; }
+
+    [JsonProperty("idType")]
+    public string? IdType { get; set; } // "RUT" o "DNI"
+
+    [JsonProperty("idNumber")]
+    public string? IdNumber { get; set; } // RUT o DNI según el tipo
+
+    [JsonProperty("birthDate")]
+    public DateTime? BirthDate { get; set; }
+
+    [JsonProperty("isRegistrationComplete")]
+    public bool IsRegistrationComplete { get; set; } = false;
+
     public bool IsAdmin => Role == UserRole.Admin || Role == UserRole.Photographer;
 }

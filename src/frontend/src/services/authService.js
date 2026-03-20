@@ -19,5 +19,9 @@ export default {
   
   async validateToken() {
     return apiClient.get('/auth/validate')
+  },
+
+  async completeRegistration(phone, idType, idNumber, birthDate) {
+    return apiClient.post('/auth/complete-registration', { phone, idType, idNumber, birthDate })
   }
 }

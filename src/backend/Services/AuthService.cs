@@ -16,8 +16,10 @@ public interface IAuthService
     Task<AuthResponse> AuthenticateWithGoogleAsync(string idToken, string? refreshToken = null, string? accessToken = null);
     Task<AuthResponse> AuthenticatePhotographerWithGoogleAsync(string idToken, string? refreshToken = null, string? accessToken = null);
     Task<AuthResponse> AuthenticateAdminAsync(string username);
+    Task<AuthResponse> CompleteRegistrationAsync(string userId, CompleteRegistrationRequest request);
     string GenerateJwtToken(User user);
     Task<User?> GetUserFromTokenAsync(string token);
+    bool ValidateRut(string rut);
 }
 
 public class AuthService : IAuthService
@@ -27,7 +29,7 @@ public class AuthService : IAuthService
     private readonly GooglePhotosSettings _googleSettings;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<AuthService> _logger;
-    private const string PHOTOGRAPHER_EMAIL = "ahumada.enzo@gmail.com";
+    private static readonly string[] PHOTOGRAPHER_EMAILS = { "egan.fotografia.ph@gmail.com" };
 
     public AuthService(
         IUserRepository userRepository,
@@ -51,7 +53,7 @@ public class AuthService : IAuthService
         _logger.LogInformation("Authenticating user with email: {Email}", payload.Email);
 
         // Determinar el rol basado en el email
-        var role = payload.Email.Equals(PHOTOGRAPHER_EMAIL, StringComparison.OrdinalIgnoreCase) 
+        var role = PHOTOGRAPHER_EMAILS.Contains(payload.Email, StringComparer.OrdinalIgnoreCase)
             ? UserRole.Photographer 
             : UserRole.Customer;
 
@@ -75,10 +77,11 @@ public class AuthService : IAuthService
         var existingUser = await _userRepository.GetByGoogleUserIdAsync(payload.Subject);
 
         User user;
+        bool needsRegistration = false;
         
         if (existingUser == null)
         {
-            // Create new user
+            // Create new user (incomplete registration)
             user = new User
             {
                 GoogleUserId = payload.Subject,
@@ -88,11 +91,15 @@ public class AuthService : IAuthService
                 GoogleRefreshToken = refreshToken,
                 GoogleAccessToken = accessToken,
                 GoogleTokenExpiresAt = accessToken != null ? DateTime.UtcNow.AddHours(1) : null,
+                IsRegistrationComplete = role == UserRole.Photographer, // Los fotógrafos no necesitan completar registro
                 CreatedAt = DateTime.UtcNow,
                 LastLoginAt = DateTime.UtcNow
             };
 
             user = await _userRepository.CreateAsync(user);
+            needsRegistration = !user.IsRegistrationComplete;
+            
+            _logger.LogInformation("New user created. NeedsRegistration: {NeedsRegistration}", needsRegistration);
         }
         else
         {
@@ -108,18 +115,30 @@ public class AuthService : IAuthService
                 existingUser.GoogleAccessToken = accessToken;
                 existingUser.GoogleTokenExpiresAt = DateTime.UtcNow.AddHours(1);
             }
+            
+            // Si es fotógrafo, marcar registro como completo automáticamente
+            if (role == UserRole.Photographer)
+            {
+                existingUser.IsRegistrationComplete = true;
+            }
+            
             user = await _userRepository.UpdateAsync(existingUser);
+            needsRegistration = !user.IsRegistrationComplete;
+            
+            _logger.LogInformation("Existing user updated. NeedsRegistration: {NeedsRegistration}", needsRegistration);
         }
 
         var token = GenerateJwtToken(user);
 
         return new AuthResponse
         {
-            Token = token,
+            Token = needsRegistration ? string.Empty : token,
+            TempToken = needsRegistration ? token : null,
             UserId = user.Id,
             Email = user.Email,
             Name = user.Name,
-            IsAdmin = user.IsAdmin
+            IsAdmin = user.IsAdmin,
+            NeedsRegistration = needsRegistration
         };
     }
 
@@ -133,7 +152,7 @@ public class AuthService : IAuthService
             !string.IsNullOrEmpty(refreshToken));
 
         // Verificar que sea el email del fotógrafo
-        if (!payload.Email.Equals(PHOTOGRAPHER_EMAIL, StringComparison.OrdinalIgnoreCase))
+        if (!PHOTOGRAPHER_EMAILS.Contains(payload.Email, StringComparer.OrdinalIgnoreCase))
         {
             throw new UnauthorizedAccessException("Solo el fotógrafo puede autenticarse con esta cuenta");
         }
@@ -260,6 +279,113 @@ public class AuthService : IAuthService
         catch
         {
             return null;
+        }
+    }
+
+    public async Task<AuthResponse> CompleteRegistrationAsync(string userId, CompleteRegistrationRequest request)
+    {
+        // Obtener usuario
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user == null)
+        {
+            throw new ArgumentException("Usuario no encontrado");
+        }
+
+        // Validar que no haya completado ya el registro
+        if (user.IsRegistrationComplete)
+        {
+            throw new InvalidOperationException("El usuario ya completó el registro");
+        }
+
+        // Validar tipo de identificación
+        if (request.IdType != "RUT" && request.IdType != "DNI")
+        {
+            throw new ArgumentException("Tipo de identificación inválido. Debe ser 'RUT' o 'DNI'");
+        }
+
+        // Validar RUT chileno solo si el tipo es RUT
+        if (request.IdType == "RUT" && !ValidateRut(request.IdNumber))
+        {
+            throw new ArgumentException("RUT inválido. Por favor verifica el formato (ej: 12345678-9)");
+        }
+
+        // Validar que el DNI no esté vacío
+        if (string.IsNullOrWhiteSpace(request.IdNumber))
+        {
+            throw new ArgumentException("El número de identificación es requerido");
+        }
+
+        // Validar fecha de nacimiento (mayor de 18 años)
+        var age = DateTime.Today.Year - request.BirthDate.Year;
+        if (request.BirthDate.Date > DateTime.Today.AddYears(-age)) age--;
+        
+        if (age < 18)
+        {
+            throw new ArgumentException("Debes ser mayor de 18 años para registrarte");
+        }
+
+        // Actualizar usuario
+        user.Phone = request.Phone;
+        user.IdType = request.IdType;
+        user.IdNumber = request.IdNumber;
+        user.BirthDate = request.BirthDate;
+        user.IsRegistrationComplete = true;
+
+        user = await _userRepository.UpdateAsync(user);
+
+        _logger.LogInformation("User {UserId} completed registration successfully with {IdType}", userId, request.IdType);
+
+        // Generar nuevo token
+        var token = GenerateJwtToken(user);
+
+        return new AuthResponse
+        {
+            Token = token,
+            UserId = user.Id,
+            Email = user.Email,
+            Name = user.Name,
+            IsAdmin = user.IsAdmin,
+            NeedsRegistration = false
+        };
+    }
+
+    public bool ValidateRut(string rut)
+    {
+        try
+        {
+            // Eliminar puntos y guiones
+            rut = rut.Replace(".", "").Replace("-", "").Trim().ToUpper();
+
+            // Verificar largo (mínimo 8 caracteres: 7 números + 1 dígito verificador)
+            if (rut.Length < 8 || rut.Length > 9)
+                return false;
+
+            // Separar número y dígito verificador
+            var rutNumber = rut.Substring(0, rut.Length - 1);
+            var dvProvided = rut.Substring(rut.Length - 1);
+
+            // Verificar que el número sea numérico
+            if (!int.TryParse(rutNumber, out int rutNum))
+                return false;
+
+            // Calcular dígito verificador
+            int sum = 0;
+            int multiplier = 2;
+
+            for (int i = rutNumber.Length - 1; i >= 0; i--)
+            {
+                sum += int.Parse(rutNumber[i].ToString()) * multiplier;
+                multiplier = multiplier == 7 ? 2 : multiplier + 1;
+            }
+
+            int dvExpected = 11 - (sum % 11);
+            string dvCalculated = dvExpected == 11 ? "0" : dvExpected == 10 ? "K" : dvExpected.ToString();
+
+            return dvProvided == dvCalculated;
+        }
+        catch
+        {
+            return false;
         }
     }
 }

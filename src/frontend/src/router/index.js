@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('@/views/auth/CallbackView.vue')
     },
     {
+      path: '/register',
+      name: 'register',
+      component: () => import('@/views/auth/RegisterView.vue')
+    },
+    {
       path: '/albums',
       name: 'albums',
       component: () => import('@/views/AlbumsView.vue'),

@@ -47,7 +47,10 @@ onMounted(async () => {
         message.value = 'Completando autenticación...'
         success = await authStore.login(code)
         
-        if (success) {
+        if (success && success.needsRegistration) {
+          toast.info('Por favor completa tu registro')
+          router.push('/register')
+        } else if (success) {
           toast.success('¡Bienvenido!')
           router.push('/albums')
         } else {

@@ -18,6 +18,25 @@ export const useAuthStore = defineStore('auth', () => {
       const response = await authService.googleCallback(code)
       
       if (response.success && response.data) {
+        // Si necesita completar registro
+        if (response.data.needsRegistration) {
+          // Guardar tempToken para completar registro después
+          user.value = {
+            userId: response.data.userId,
+            email: response.data.email,
+            name: response.data.name,
+            isAdmin: response.data.isAdmin || false,
+            needsRegistration: true
+          }
+          token.value = response.data.tempToken
+          
+          localStorage.setItem('tempToken', response.data.tempToken)
+          localStorage.setItem('tempUser', JSON.stringify(user.value))
+          
+          return { needsRegistration: true }
+        }
+        
+        // Login completo
         user.value = {
           userId: response.data.userId,
           email: response.data.email,
@@ -29,12 +48,42 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.setItem('token', response.data.token)
         localStorage.setItem('user', JSON.stringify(user.value))
         
-        return true
+        return { needsRegistration: false }
       }
       return false
     } catch (error) {
       console.error('Login error:', error)
       return false
+    }
+  }
+
+  async function completeRegistration(phone, idType, idNumber, birthDate) {
+    try {
+      const response = await authService.completeRegistration(phone, idType, idNumber, birthDate)
+      
+      if (response.success && response.data) {
+        user.value = {
+          userId: response.data.userId,
+          email: response.data.email,
+          name: response.data.name,
+          isAdmin: response.data.isAdmin || false
+        }
+        token.value = response.data.token
+        
+        // Limpiar datos temporales
+        localStorage.removeItem('tempToken')
+        localStorage.removeItem('tempUser')
+        
+        // Guardar datos finales
+        localStorage.setItem('token', response.data.token)
+        localStorage.setItem('user', JSON.stringify(user.value))
+        
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Complete registration error:', error)
+      throw error
     }
   }
 
@@ -123,6 +172,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     photographerLogin,
     adminLogin,
+    completeRegistration,
     logout,
     setGoogleAccessToken,
     initializeAuth

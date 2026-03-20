@@ -498,11 +498,14 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
+- [ ] **Registrar Usuarios** - Solicitar Rut y Fecha de Nacimiento en el primer login, guardar nombre y email de contacto.
+- [ ] **Email de Confirmación** - Enviar email automático al crear pedido con instrucciones de pago.
+- [ ] **Sistema de Cupones** - Descuentos y promociones
+- [ ] **Enlace de Descarga por Email** - Enviar enlace de descarga automático al confirmar pago.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago
 - [ ] **Marca de Agua Server-Side** - Usar ImageSharp para mayor seguridad
 - [ ] **Panel de Analytics** - Reportes de ventas y estadísticas
 - [ ] **Notificaciones Push** - Websockets o Server-Sent Events
-- [ ] **Sistema de Cupones** - Descuentos y promociones
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3
 - [ ] **Testing** - Tests unitarios e integración
 - [ ] **Cache Redis** - Mejorar performance
