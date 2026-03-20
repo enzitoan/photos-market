@@ -50,6 +50,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Fetch last 2 commits for change detection
 
       - name: Log in to Azure
         uses: azure/login@v2
@@ -159,6 +161,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Fetch last 2 commits for change detection
 
       - name: Log in to Azure
         uses: azure/login@v2
