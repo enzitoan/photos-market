@@ -1,12 +1,13 @@
 name: Deploy Infrastructure
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'infra/**'
-      - '.github/workflows/deploy-infra.yml'
+  # Automatic execution disabled - uncomment to enable auto-deploy on push
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - 'infra/**'
+  #     - '.github/workflows/deploy-infra.yml'
   workflow_dispatch:
     inputs:
       environment:
