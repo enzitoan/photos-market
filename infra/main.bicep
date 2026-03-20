@@ -112,7 +112,23 @@ module containerAppsEnvironment 'modules/container-apps-environment.bicep' = {
   ]
 }
 
-// Backend Container App
+// Frontend Container App (deployed first to get real FQDN)
+module frontendApp 'modules/frontend-container-app.bicep' = {
+  name: 'frontendApp'
+  params: {
+    name: '${appName}-frontend-${environmentName}'
+    location: location
+    containerAppsEnvironmentId: containerAppsEnvironment.outputs.id
+    containerImage: frontendImage
+    containerRegistryName: containerRegistryName
+    backendUrl: '${appName}-backend-${environmentName}.${containerAppsEnvironment.outputs.defaultDomain}' // temporary, will be updated
+  }
+  dependsOn: [
+    containerRegistry
+  ]
+}
+
+// Backend Container App (uses real frontend FQDN)
 module backendApp 'modules/backend-container-app.bicep' = {
   name: 'backendApp'
   params: {
@@ -123,26 +139,11 @@ module backendApp 'modules/backend-container-app.bicep' = {
     containerRegistryName: containerRegistryName
     keyVaultUri: keyVault.outputs.uri
     googleDriveRootFolderId: googleDriveRootFolderId
-    frontendUrl: 'https://${appName}-frontend-${environmentName}.${containerAppsEnvironment.outputs.defaultDomain}'
+    frontendUrl: 'https://${frontendApp.outputs.fqdn}'
   }
   dependsOn: [
     containerRegistry
-  ]
-}
-
-// Frontend Container App
-module frontendApp 'modules/frontend-container-app.bicep' = {
-  name: 'frontendApp'
-  params: {
-    name: '${appName}-frontend-${environmentName}'
-    location: location
-    containerAppsEnvironmentId: containerAppsEnvironment.outputs.id
-    containerImage: frontendImage
-    containerRegistryName: containerRegistryName
-    backendUrl: backendApp.outputs.fqdn
-  }
-  dependsOn: [
-    containerRegistry
+    frontendApp // Backend depends on Frontend to get correct FQDN
   ]
 }
 

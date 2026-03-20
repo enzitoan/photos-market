@@ -4,35 +4,128 @@ Este directorio contiene scripts para automatizar el despliegue y gestión de Ph
 
 ## 📜 Scripts Disponibles
 
-### 1. Deploy-PhotosMarket.ps1
-**Script principal de despliegue** - Replica la funcionalidad de los GitHub Actions para desplegar la aplicación a Azure Container Apps.
+### 1. Deploy-Infrastructure.ps1 ⭐ NUEVO
+**Despliegue de infraestructura** - Despliega toda la infraestructura de Azure (Container Apps, CosmosDB, Key Vault, ACR, etc.) con validación de Bicep y verificación OAuth.
 
-### 2. Update-ServiceUrls.ps1
-**Actualización rápida de URLs** - Actualiza las variables de entorno entre servicios sin hacer rebuild.
+### 2. Deploy-PhotosMarket.ps1
+**Despliegue de aplicaciones** - Despliega Backend y/o Frontend a Azure Container Apps. ✅ Ahora despliega Frontend PRIMERO, luego Backend (corrige error OAuth).
 
-### 3. Get-DeploymentStatus.ps1
+### 3. Fix-AzureOAuthConfig.ps1 🔧
+**Corrección de OAuth** - Diagnostica y corrige problemas de OAuth, específicamente el error "Missing required parameter: scope".
+
+### 4. Update-ServiceUrls.ps1
+**Sincronización de URLs** - Actualiza las variables de entorno entre servicios sin hacer rebuild.
+
+### 5. Get-DeploymentStatus.ps1
 **Verificación de estado** - Muestra información detallada sobre los recursos desplegados en Azure.
+
+---
+
+## 🚀 Flujo de Despliegue Recomendado
+
+### Primera Vez (Infraestructura + Aplicaciones)
+
+```powershell
+# 1. Desplegar infraestructura (Container Apps, CosmosDB, Key Vault, etc.)
+.\Deploy-Infrastructure.ps1 -ResourceGroupName "rg-photosmarket-dev" -Environment dev
+
+# 2. Desplegar aplicaciones (Frontend y Backend)
+.\Deploy-PhotosMarket.ps1 -ResourceGroupName "rg-photosmarket-dev" -Environment dev
+
+# 3. Verificar y corregir OAuth (si es necesario)
+.\Fix-AzureOAuthConfig.ps1 -ResourceGroupName "rg-photosmarket-dev" -Environment dev
+```
+
+### Actualizar Solo Aplicaciones
+
+```powershell
+# Opción 1: Actualizar ambos (Frontend y Backend)
+.\Deploy-PhotosMarket.ps1
+
+# Opción 2: Actualizar solo Backend
+.\Deploy-PhotosMarket.ps1 -Component Backend
+
+# Opción 3: Actualizar solo Frontend
+.\Deploy-PhotosMarket.ps1 -Component Frontend
+```
+
+### Sincronizar URLs entre Servicios
+
+```powershell
+# Si las URLs cambiaron o no están sincronizadas
+.\Updateervice-Urls.ps1 -ResourceGroupName "rg-photosmarket-dev"
+```
+
+---
+
+## Deploy-Infrastructure.ps1
+
+Despliega o actualiza la infraestructura completa de Photos Market en Azure.
+
+### Características
+
+- ✅ Validación de Bicep antes de desplegar
+- ✅ Verificación automática de OAuth
+- ✅ Corrección de FRONTEND_URL
+- ✅ Mejor manejo de secretos
+- ✅ Modo de validación (sin desplegar)
+
+### Uso Básico
+
+```powershell
+# Desplegar infraestructura completa
+.\Deploy-Infrastructure.ps1
+
+# Solo validar (sin desplegar)
+.\Deploy-Infrastructure.ps1 -ValidationOnly
+
+# Desplegar en producción
+.\Deploy-Infrastructure.ps1 -Environment prod -Location westus
+
+# Desplegar sin verificar OAuth
+.\Deploy-Infrastructure.ps1 -SkipOAuthVerification
+```
+
+### Parámetros
+
+| Parámetro | Descripción | Valores | Default |
+|-----------|-------------|---------|---------|
+| `-ResourceGroupName` | Nombre del Resource Group | string | `rg-photosmarket-dev` |
+| `-Location` | Región de Azure | string | `eastus` |
+| `-Environment` | Ambiente de despliegue | `dev`, `staging`, `prod` | `dev` |
+| `-ValidationOnly` | Solo validar Bicep | switch | `false` |
+| `-SkipOAuthVerification` | Omitir verificación OAuth | switch | `false` |
+
+### Requisitos
+
+1. Azure CLI instalado y autenticado
+2. Archivos Bicep en `infra/` (main.bicep, main.bicepparam)
+3. Secretos configurados como variables de entorno o en main.bicepparam:
+   - `GOOGLE_OAUTH_CLIENT_ID`
+   - `GOOGLE_OAUTH_CLIENT_SECRET`
+   - `JWT_SECRET_KEY`
+   - `GOOGLE_DRIVE_ROOT_FOLDER_ID`
+   - `GOOGLE_DRIVE_CREDENTIALS`
 
 ---
 
 ## Deploy-PhotosMarket.ps1
 
-Script de PowerShell que replica la funcionalidad de los GitHub Actions para desplegar la aplicación a Azure Container Apps.
+Script de PowerShell que despliega aplicaciones a Azure Container Apps.
+
+### ⚠️ IMPORTANTE: Orden de Despliegue
+
+Este script ahora despliega **Frontend PRIMERO, luego Backend**. Esto asegura que el Backend use el FQDN real del Frontend, corrigiendo el error "Missing required parameter: scope".
 
 ### Requisitos Previos
 
 1. **Azure CLI** instalado y configurado
    ```powershell
-   # Verificar instalación
    az --version
-   
-   # Instalar si es necesario
-   # https://docs.microsoft.com/cli/azure/install-azure-cli
    ```
 
 2. **Docker Desktop** instalado y corriendo
    ```powershell
-   # Verificar instalación
    docker --version
    docker ps
    ```
@@ -40,6 +133,11 @@ Script de PowerShell que replica la funcionalidad de los GitHub Actions para des
 3. **Login en Azure**
    ```powershell
    az login
+   ```
+
+4. **Infraestructura ya desplegada**
+   ```powershell
+   .\Deploy-Infrastructure.ps1
    ```
 
 ### Uso Básico
@@ -68,11 +166,12 @@ Script de PowerShell que replica la funcionalidad de los GitHub Actions para des
 
 | Parámetro | Descripción | Valores | Default |
 |-----------|-------------|---------|---------|
-| `-Component` | Componente a desplegar | `Backend`, `Frontend`, `All` | `All` |
+| `-Component` | Componente a desplegar | `Backend`, `Frontend`, `Both` | `Both` |
 | `-ResourceGroupName` | Nombre del Resource Group | string | `rg-photosmarket-dev` |
 | `-Environment` | Ambiente de despliegue | `dev`, `staging`, `prod` | `dev` |
 | `-SkipBuild` | Omitir build de imágenes Docker | switch | `false` |
 | `-ImageTag` | Tag personalizado para las imágenes | string | timestamp actual |
+| `-SkipOAuthVerification` | Omitir verificación OAuth | switch | `false` |
 
 ### Ejemplos Avanzados
 
@@ -88,7 +187,7 @@ Script de PowerShell que replica la funcionalidad de los GitHub Actions para des
 
 #### Desplegar a Staging con Build Completo
 ```powershell
-.\Deploy-PhotosMarket.ps1 -Environment staging -Component All
+.\Deploy-PhotosMarket.ps1 -Environment staging -Component Both
 ```
 
 ### Variables de Configuración
@@ -194,6 +293,89 @@ Ventajas de GitHub Actions:
 - Los tags de imagen se generan automáticamente con timestamp si no se especifican
 - Las URLs se configuran automáticamente entre frontend y backend
 - El script incluye validación y manejo de errores en cada paso
+
+---
+
+## Fix-AzureOAuthConfig.ps1
+
+Diagnostica y corrige automáticamente problemas de configuración OAuth en Azure Container Apps.
+
+### Cuándo Usar
+
+- ❌ Error: "Missing required parameter: scope"
+- ❌ FRONTEND_URL no coincide con el FQDN real del Frontend
+- ❌ OAuth scopes faltantes o incorrectos
+
+### Uso Básico
+
+```powershell
+# Diagnosticar y corregir OAuth
+.\Fix-AzureOAuthConfig.ps1 -ResourceGroupName "rg-photosmarket-dev"
+
+# Especificar ambiente
+.\Fix-AzureOAuthConfig.ps1 -ResourceGroupName "rg-photosmarket-dev" -Environment prod
+```
+
+### Parámetros
+
+| Parámetro | Descripción | Valores | Default |
+|-----------|-------------|---------|---------|
+| `-ResourceGroupName` | Nombre del Resource Group | string | **requerido** |
+| `-Environment` | Ambiente | `dev`, `staging`, `prod` | `dev` |
+
+### Qué Hace
+
+1. **Verificación de Azure CLI y autenticación**
+2. **Obtención de información de Container Apps**
+   - Backend FQDN
+   - Frontend FQDN
+3. **Verificación de configuración actual**
+   - FRONTEND_URL en Backend
+   - OAuth Scopes (debe haber 3)
+   - Client ID
+4. **Identificación de problemas**
+   - FRONTEND_URL incorrecta o faltante
+   - Scopes faltantes o incompletos
+5. **Aplicación de correcciones** (con confirmación del usuario)
+   - Actualiza FRONTEND_URL con el FQDN real del Frontend
+   - Configura los 3 scopes requeridos:
+     - `https://www.googleapis.com/auth/userinfo.email`
+     - `https://www.googleapis.com/auth/userinfo.profile`
+     - `openid`
+6. **Verificación final**
+   - Confirma que las correcciones se aplicaron correctamente
+
+### Ejemplo de Salida
+
+```
+╔═══════════════════════════════════════════════════════════════╗
+║  DIAGNÓSTICO DE CONFIGURACIÓN OAUTH EN AZURE
+╚═══════════════════════════════════════════════════════════════╝
+
+ℹ️  Verificando Azure CLI...
+✅ Azure CLI autenticado como: user@example.com
+
+╔═══════════════════════════════════════════════════════════════╗
+║  OBTENIENDO INFORMACIÓN DE CONTAINER APPS
+╚═══════════════════════════════════════════════════════════════╝
+
+✅ Backend FQDN: https://photosmarket-backend-dev.jollywater-xxx.eastus.azurecontainerapps.io
+✅ Frontend FQDN: https://photosmarket-frontend-dev.jollywater-xxx.eastus.azurecontainerapps.io
+
+📋 Variables de entorno OAuth actuales:
+   FRONTEND_URL: https://photosmarket-frontend-dev.jollywater-xxx.eastus.azurecontainerapps.io
+   
+   Scopes configurados (3):
+   ✓ https://www.googleapis.com/auth/userinfo.email
+   ✓ https://www.googleapis.com/auth/userinfo.profile
+   ✓ openid
+
+✅ No se encontraron problemas en la configuración
+
+🎯 PRÓXIMOS PASOS:
+   1. Verifica que en Google Cloud Console:
+      - Los URIs de redirección incluyan: https://photosmarket-frontend-dev.jollywater-xxx.eastus.azurecontainerapps.io/callback
+```
 
 ---
 

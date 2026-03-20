@@ -3,12 +3,14 @@
     Script de despliegue para Photos Market en Azure Container Apps
 
 .DESCRIPTION
-    Este script replica la funcionalidad de los GitHub Actions para desplegar
-    el backend y/o frontend de Photos Market a Azure Container Apps.
+    Este script despliega el backend y/o frontend de Photos Market a Azure Container Apps.
     Realiza build de imágenes Docker, push a ACR y actualización de Container Apps.
+    
+    IMPORTANTE: Despliega Frontend PRIMERO, luego Backend para asegurar que el Backend
+    use el FQDN real del Frontend (corrige el error "Missing required parameter: scope")
 
 .PARAMETER Component
-    Componente a desplegar: 'Backend', 'Frontend', o 'All' (default: 'All')
+    Componente a desplegar: 'Backend', 'Frontend', o 'Both' (default: 'Both')
 
 .PARAMETER ResourceGroupName
     Nombre del Resource Group de Azure (default: 'rg-photosmarket-dev')
@@ -22,6 +24,9 @@
 .PARAMETER ImageTag
     Tag personalizado para las imágenes Docker (default: timestamp)
 
+.PARAMETER SkipOAuthVerification
+    Si se especifica, omite la verificación de OAuth después del despliegue
+
 .EXAMPLE
     .\Deploy-PhotosMarket.ps1
     Despliega backend y frontend con configuración por defecto
@@ -33,13 +38,17 @@
 .EXAMPLE
     .\Deploy-PhotosMarket.ps1 -Environment prod -ImageTag "v1.2.3"
     Despliega con tag específico en ambiente de producción
+
+.NOTES
+    Para corregir errores de OAuth, ejecuta después del deployment:
+    .\Fix-AzureOAuthConfig.ps1 -ResourceGroupName <resource-group>
 #>
 
 [CmdletBinding()]
 param(
     [Parameter()]
-    [ValidateSet('Backend', 'Frontend', 'All')]
-    [string]$Component = 'All',
+    [ValidateSet('Backend', 'Frontend', 'Both')]
+    [string]$Component = 'Both',
 
     [Parameter()]
     [string]$ResourceGroupName = 'rg-photosmarket-dev',
@@ -52,7 +61,10 @@ param(
     [switch]$SkipBuild,
 
     [Parameter()]
-    [string]$ImageTag
+    [string]$ImageTag,
+
+    [Parameter()]
+    [switch]$SkipOAuthVerification
 )
 
 # Variables de configuración
@@ -226,39 +238,32 @@ function Deploy-Backend {
         [string]$ImageName,
         [string]$Tag,
         [string]$ContainerApp,
-        [string]$ResourceGroup
+        [string]$ResourceGroup,
+        [string]$FrontendFqdn
     )
     
     Write-Step "Desplegando Backend a Azure Container Apps..."
     
-    # Obtener URL del frontend
-    $frontendFqdn = Get-ContainerAppUrl -AppName $config.FrontendContainerApp -ResourceGroup $ResourceGroup
+    # Usar el Frontend FQDN proporcionado (real)
+    if (-not $FrontendFqdn) {
+        Write-Error "Frontend FQDN no proporcionado. No se puede configurar FRONTEND_URL correctamente"
+        return $false
+    }
     
-    if (-not $frontendFqdn) {
-        Write-Error "No se pudo obtener la URL del frontend. Continuando sin configurar FRONTEND_URL..."
-        $envVars = @()
-    }
-    else {
-        $envVars = @("FRONTEND_URL=https://$frontendFqdn")
-    }
+    $frontendUrl = "https://$FrontendFqdn"
+    $envVars = @("FRONTEND_URL=$frontendUrl")
     
     $imageFullPath = "$Registry.azurecr.io/${ImageName}:$Tag"
     Write-Info "Actualizando Container App: $ContainerApp"
     Write-Info "Imagen: $imageFullPath"
+    Write-Info "FRONTEND_URL: $frontendUrl"
     
-    if ($envVars.Count -gt 0) {
-        az containerapp update `
-            --name $ContainerApp `
-            --resource-group $ResourceGroup `
-            --image $imageFullPath `
-            --set-env-vars $envVars
-    }
-    else {
-        az containerapp update `
-            --name $ContainerApp `
-            --resource-group $ResourceGroup `
-            --image $imageFullPath
-    }
+    az containerapp update `
+        --name $ContainerApp `
+        --resource-group $ResourceGroup `
+        --image $imageFullPath `
+        --set-env-vars $envVars `
+        --output none
     
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Error al desplegar Backend"
@@ -274,6 +279,7 @@ function Deploy-Backend {
     
     Write-Success "Backend desplegado exitosamente!"
     Write-Info "Revision: $revision"
+    Write-Success "FRONTEND_URL configurado: $frontendUrl"
     
     return $true
 }
@@ -285,38 +291,36 @@ function Deploy-Frontend {
         [string]$ImageName,
         [string]$Tag,
         [string]$ContainerApp,
-        [string]$ResourceGroup
+        [string]$ResourceGroup,
+        [string]$BackendFqdn
     )
     
     Write-Step "Desplegando Frontend a Azure Container Apps..."
-    
-    # Obtener URL del backend
-    $backendFqdn = Get-ContainerAppUrl -AppName $config.BackendContainerApp -ResourceGroup $ResourceGroup
-    
-    if (-not $backendFqdn) {
-        Write-Error "No se pudo obtener la URL del backend. Continuando sin configurar VITE_API_URL..."
-        $envVars = @()
-    }
-    else {
-        $envVars = @("VITE_API_URL=https://$backendFqdn")
-    }
     
     $imageFullPath = "$Registry.azurecr.io/${ImageName}:$Tag"
     Write-Info "Actualizando Container App: $ContainerApp"
     Write-Info "Imagen: $imageFullPath"
     
-    if ($envVars.Count -gt 0) {
+    # Si hay Backend FQDN, configurarlo
+    if ($BackendFqdn) {
+        $backendUrl = "https://$BackendFqdn"
+        Write-Info "VITE_API_URL: $backendUrl"
+        
         az containerapp update `
             --name $ContainerApp `
             --resource-group $ResourceGroup `
             --image $imageFullPath `
-            --set-env-vars $envVars
+            --set-env-vars "VITE_API_URL=$backendUrl" `
+            --output none
     }
     else {
+        Write-Warning "Backend FQDN no disponible, desplegando sin VITE_API_URL"
+        
         az containerapp update `
             --name $ContainerApp `
             --resource-group $ResourceGroup `
-            --image $imageFullPath
+            --image $imageFullPath `
+            --output none
     }
     
     if ($LASTEXITCODE -ne 0) {
@@ -350,6 +354,7 @@ Write-Info "Environment: $Environment"
 Write-Info "Resource Group: $($config.ResourceGroup)"
 Write-Info "Image Tag: $ImageTag"
 Write-Info "Skip Build: $SkipBuild"
+Write-Info "Skip OAuth Verification: $SkipOAuthVerification"
 
 # Verificaciones previas
 if (-not (Test-AzureCLI)) { exit 1 }
@@ -373,21 +378,8 @@ if (-not $SkipBuild) {
         exit 1
     }
     
-    # Build Backend
-    if ($Component -eq 'Backend' -or $Component -eq 'All') {
-        $backendPath = Join-Path $projectRoot "src\backend"
-        $success = Build-AndPushDockerImage `
-            -ComponentName "Backend" `
-            -ContextPath $backendPath `
-            -ImageName $config.BackendImageName `
-            -Registry $config.ContainerRegistry `
-            -Tag $ImageTag
-        
-        if (-not $success) { exit 1 }
-    }
-    
-    # Build Frontend
-    if ($Component -eq 'Frontend' -or $Component -eq 'All') {
+    # Build Frontend primero (si aplica)
+    if ($Component -eq 'Frontend' -or $Component -eq 'Both') {
         $frontendPath = Join-Path $projectRoot "src\frontend"
         $success = Build-AndPushDockerImage `
             -ComponentName "Frontend" `
@@ -398,57 +390,238 @@ if (-not $SkipBuild) {
         
         if (-not $success) { exit 1 }
     }
+    
+    # Build Backend después (si aplica)
+    if ($Component -eq 'Backend' -or $Component -eq 'Both') {
+        $backendPath = Join-Path $projectRoot "src\backend"
+        $success = Build-AndPushDockerImage `
+            -ComponentName "Backend" `
+            -ContextPath $backendPath `
+            -ImageName $config.BackendImageName `
+            -Registry $config.ContainerRegistry `
+            -Tag $ImageTag
+        
+        if (-not $success) { exit 1 }
+    }
 }
 else {
     Write-Info "Omitiendo build de imágenes Docker (SkipBuild activado)"
 }
 
-# Despliegue a Azure Container Apps
+# ============================================================================
+# DESPLIEGUE A AZURE CONTAINER APPS
+# IMPORTANTE: Frontend PRIMERO, luego Backend (para OAuth correcto)
+# ============================================================================
+
 Write-Host "`n" -NoNewline
 
-# Deploy Backend
-if ($Component -eq 'Backend' -or $Component -eq 'All') {
-    $success = Deploy-Backend `
-        -Registry $config.ContainerRegistry `
-        -ImageName $config.BackendImageName `
-        -Tag $ImageTag `
-        -ContainerApp $config.BackendContainerApp `
-        -ResourceGroup $config.ResourceGroup
-    
-    if (-not $success) { exit 1 }
-}
+# Variables para almacenar FQDNs
+$frontendFqdn = $null
+$backendFqdn = $null
 
-# Deploy Frontend
-if ($Component -eq 'Frontend' -or $Component -eq 'All') {
+# PASO 1: Deploy Frontend primero
+if ($Component -eq 'Frontend' -or $Component -eq 'Both') {
+    # Obtener Backend FQDN actual (si existe) para configurar Frontend
+    $backendFqdn = az containerapp show `
+        --name $config.BackendContainerApp `
+        --resource-group $config.ResourceGroup `
+        --query "properties.configuration.ingress.fqdn" `
+        --output tsv 2>$null
+    
+    if (-not $backendFqdn) {
+        Write-Warning "Backend no encontrado, Frontend se desplegará sin VITE_API_URL"
+    }
+    
     $success = Deploy-Frontend `
         -Registry $config.ContainerRegistry `
         -ImageName $config.FrontendImageName `
         -Tag $ImageTag `
         -ContainerApp $config.FrontendContainerApp `
-        -ResourceGroup $config.ResourceGroup
+        -ResourceGroup $config.ResourceGroup `
+        -BackendFqdn $backendFqdn
     
     if (-not $success) { exit 1 }
+    
+    # Obtener Frontend FQDN real después del deployment
+    $frontendFqdn = az containerapp show `
+        --name $config.FrontendContainerApp `
+        --resource-group $config.ResourceGroup `
+        --query "properties.configuration.ingress.fqdn" `
+        --output tsv
+    
+    Write-Success "Frontend FQDN real: https://$frontendFqdn"
+}
+
+# PASO 2: Deploy Backend con Frontend FQDN real
+if ($Component -eq 'Backend' -or $Component -eq 'Both') {
+    # Obtener Frontend FQDN si no lo tenemos aún
+    if (-not $frontendFqdn) {
+        $frontendFqdn = az containerapp show `
+            --name $config.FrontendContainerApp `
+            --resource-group $config.ResourceGroup `
+            --query "properties.configuration.ingress.fqdn" `
+            --output tsv 2>$null
+        
+        if (-not $frontendFqdn) {
+            Write-Error "No se pudo obtener Frontend FQDN. El Backend necesita esta URL para OAuth"
+            exit 1
+        }
+    }
+    
+    $success = Deploy-Backend `
+        -Registry $config.ContainerRegistry `
+        -ImageName $config.BackendImageName `
+        -Tag $ImageTag `
+        -ContainerApp $config.BackendContainerApp `
+        -ResourceGroup $config.ResourceGroup `
+        -FrontendFqdn $frontendFqdn
+    
+    if (-not $success) { exit 1 }
+    
+    # Obtener Backend FQDN real
+    $backendFqdn = az containerapp show `
+        --name $config.BackendContainerApp `
+        --resource-group $config.ResourceGroup `
+        --query "properties.configuration.ingress.fqdn" `
+        --output tsv
+    
+    Write-Success "Backend FQDN real: https://$backendFqdn"
+}
+
+# PASO 3: Verificar OAuth Configuration (si Backend fue desplegado)
+if (($Component -eq 'Backend' -or $Component -eq 'Both') -and -not $SkipOAuthVerification) {
+    Write-Host "`n" -NoNewline
+    Write-Step "Verificando Configuración OAuth..."
+    
+    # Obtener FRONTEND_URL configurado en Backend
+    $configuredFrontendUrl = az containerapp show `
+        --name $config.BackendContainerApp `
+        --resource-group $config.ResourceGroup `
+        --query "properties.template.containers[0].env[?name=='FRONTEND_URL'].value" `
+        --output tsv 2>$null
+    
+    Write-Info "FRONTEND_URL configurado: $configuredFrontendUrl"
+    
+    # Verificar OAuth Scopes
+    $scopesJson = az containerapp show `
+        --name $config.BackendContainerApp `
+        --resource-group $config.ResourceGroup `
+        --query "properties.template.containers[0].env[?contains(name, 'GoogleOAuth__Scopes')].{name:name, value:value}" `
+        --output json 2>$null | ConvertFrom-Json
+    
+    $scopeCount = if ($scopesJson) { $scopesJson.Count } else { 0 }
+    Write-Info "OAuth Scopes configurados: $scopeCount"
+    
+    if ($scopesJson -and $scopeCount -gt 0) {
+        foreach ($scope in $scopesJson) {
+            Write-Host "  ✓ $($scope.name): $($scope.value)" -ForegroundColor Green
+        }
+    }
+    
+    # Validar configuración
+    $expectedFrontendUrl = "https://$frontendFqdn"
+    
+    if ($configuredFrontendUrl -ne $expectedFrontendUrl) {
+        Write-Warning "FRONTEND_URL no coincide con el FQDN real del Frontend"
+        Write-Host "  Configurado: $configuredFrontendUrl" -ForegroundColor Red
+        Write-Host "  Esperado:    $expectedFrontendUrl" -ForegroundColor Green
+    } else {
+        Write-Success "FRONTEND_URL es correcto"
+    }
+    
+    if ($scopeCount -lt 3) {
+        Write-Warning "Se esperan 3 scopes de OAuth, pero solo hay $scopeCount configurados"
+        Write-Host ""  -ForegroundColor Yellow
+        Write-Host "  Esto puede causar el error: 'Missing required parameter: scope'" -ForegroundColor Yellow
+        Write-Host "  Para corregirlo, ejecuta:" -ForegroundColor Yellow
+        Write-Host "    .\scripts\Fix-AzureOAuthConfig.ps1 -ResourceGroupName $($config.ResourceGroup) -Environment $Environment" -ForegroundColor Cyan
+    } else {
+        Write-Success "OAuth configuration looks good!"
+    }
+}
+
+# PASO 4: Actualizar Frontend con Backend URL final (si ambos fueron desplegados)
+if ($Component -eq 'Both' -and $backendFqdn -and $frontendFqdn) {
+    Write-Host "`n" -NoNewline
+    Write-Step "Sincronizando URLs entre servicios..."
+    
+    Write-Info "Actualizando Frontend con Backend URL final..."
+    
+    az containerapp update `
+        --name $config.FrontendContainerApp `
+        --resource-group $config.ResourceGroup `
+        --set-env-vars "VITE_API_URL=https://$backendFqdn" `
+        --output none
+    
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "Frontend actualizado con Backend URL: https://$backendFqdn"
+    } else {
+        Write-Warning "Error al actualizar Frontend con Backend URL"
+    }
 }
 
 # Resumen final
 Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║              ¡Despliegue Completado Exitosamente!          ║" -ForegroundColor Green
 Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+Write-Host ""
 
-if ($Component -eq 'Backend' -or $Component -eq 'All') {
-    $backendUrl = Get-ContainerAppUrl -AppName $config.BackendContainerApp -ResourceGroup $config.ResourceGroup
-    if ($backendUrl) {
-        Write-Host "`n🔗 Backend URL: " -NoNewline -ForegroundColor White
-        Write-Host "https://$backendUrl" -ForegroundColor Cyan
+# Mostrar URLs finales
+if ($Component -eq 'Frontend' -or $Component -eq 'Both') {
+    if (-not $frontendFqdn) {
+        $frontendFqdn = az containerapp show `
+            --name $config.FrontendContainerApp `
+            --resource-group $config.ResourceGroup `
+            --query "properties.configuration.ingress.fqdn" `
+            --output tsv 2>$null
+    }
+    
+    if ($frontendFqdn) {
+        Write-Host "🔗 Frontend URL: " -NoNewline -ForegroundColor White
+        Write-Host "https://$frontendFqdn" -ForegroundColor Cyan
     }
 }
 
-if ($Component -eq 'Frontend' -or $Component -eq 'All') {
-    $frontendUrl = Get-ContainerAppUrl -AppName $config.FrontendContainerApp -ResourceGroup $config.ResourceGroup
-    if ($frontendUrl) {
-        Write-Host "🔗 Frontend URL: " -NoNewline -ForegroundColor White
-        Write-Host "https://$frontendUrl" -ForegroundColor Cyan
+if ($Component -eq 'Backend' -or $Component -eq 'Both') {
+    if (-not $backendFqdn) {
+        $backendFqdn = az containerapp show `
+            --name $config.BackendContainerApp `
+            --resource-group $config.ResourceGroup `
+            --query "properties.configuration.ingress.fqdn" `
+            --output tsv 2>$null
     }
+    
+    if ($backendFqdn) {
+        Write-Host "🔗 Backend URL:  " -NoNewline -ForegroundColor White
+        Write-Host "https://$backendFqdn" -ForegroundColor Cyan
+    }
+}
+
+Write-Host ""
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Yellow
+Write-Host "  PRÓXIMOS PASOS" -ForegroundColor Yellow
+Write-Host "═══════════════════════════════════════════════════════════" -ForegroundColor Yellow
+Write-Host ""
+
+if ($Component -eq 'Backend' -or $Component -eq 'Both') {
+    Write-Host "1️⃣  Configurar Google Cloud Console:" -ForegroundColor Cyan
+    Write-Host "   • Ve a: https://console.cloud.google.com/" -ForegroundColor White
+    Write-Host "   • Navega a: APIs & Services → Credentials" -ForegroundColor White
+    Write-Host "   • En 'Authorized redirect URIs', agrega:" -ForegroundColor White
+    Write-Host "     https://${frontendFqdn}/callback" -ForegroundColor Green
+    Write-Host ""
+    
+    Write-Host "2️⃣  Verificar OAuth (si hay errores):" -ForegroundColor Cyan
+    Write-Host "   .\scripts\Fix-AzureOAuthConfig.ps1 -ResourceGroupName $($config.ResourceGroup)" -ForegroundColor White
+    Write-Host ""
+}
+
+Write-Host "3️⃣  Ver logs en tiempo real:" -ForegroundColor Cyan
+if ($Component -eq 'Backend' -or $Component -eq 'Both') {
+    Write-Host "   az containerapp logs show --name $($config.BackendContainerApp) --resource-group $($config.ResourceGroup) --follow" -ForegroundColor White
+}
+if ($Component -eq 'Frontend' -or $Component -eq 'Both') {
+    Write-Host "   az containerapp logs show --name $($config.FrontendContainerApp) --resource-group $($config.ResourceGroup) --follow" -ForegroundColor White
 }
 
 Write-Host ""

@@ -1,0 +1,364 @@
+name: Deploy Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'infra/**'
+      - '.github/workflows/deploy-infra.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
+      validation_only:
+        description: 'Only validate, do not deploy'
+        required: false
+        type: boolean
+        default: false
+      force_update_oauth:
+        description: 'Force update OAuth configuration after deployment'
+        required: false
+        type: boolean
+        default: true
+
+env:
+  AZURE_RESOURCE_GROUP: rg-photosmarket-dev
+  AZURE_REGION: eastus
+
+jobs:
+  validate-secrets:
+    name: Validate Required Secrets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate secrets are configured
+        run: |
+          echo "🔍 Validating required secrets..."
+          
+          MISSING_SECRETS=()
+          
+          if [ -z "${{ secrets.AZURE_CREDENTIALS }}" ]; then
+            MISSING_SECRETS+=("AZURE_CREDENTIALS")
+          fi
+          
+          if [ -z "${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}" ]; then
+            MISSING_SECRETS+=("GOOGLE_OAUTH_CLIENT_ID")
+          fi
+          
+          if [ -z "${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}" ]; then
+            MISSING_SECRETS+=("GOOGLE_OAUTH_CLIENT_SECRET")
+          fi
+          
+          if [ -z "${{ secrets.JWT_SECRET_KEY }}" ]; then
+            MISSING_SECRETS+=("JWT_SECRET_KEY")
+          fi
+          
+          if [ -z "${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}" ]; then
+            MISSING_SECRETS+=("GOOGLE_DRIVE_ROOT_FOLDER_ID")
+          fi
+          
+          if [ -z "${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}" ]; then
+            MISSING_SECRETS+=("GOOGLE_DRIVE_CREDENTIALS")
+          fi
+          
+          if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
+            echo "❌ Missing required secrets:"
+            for secret in "${MISSING_SECRETS[@]}"; do
+              echo "   - $secret"
+            done
+            echo ""
+            echo "Please configure these secrets in:"
+            echo "GitHub Repository → Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
+
+  deploy-infrastructure:
+    name: Deploy Infrastructure
+    needs: [validate-secrets]
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      frontend-url: ${{ steps.get-outputs.outputs.frontend-url }}
+      backend-url: ${{ steps.get-outputs.outputs.backend-url }}
+      frontend-fqdn: ${{ steps.get-outputs.outputs.frontend-fqdn }}
+      backend-fqdn: ${{ steps.get-outputs.outputs.backend-fqdn }}    
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Create Resource Group (if not exists)
+        run: |
+          echo "📦 Creating/Verifying Resource Group..."
+          az group create \
+            --name ${{ env.AZURE_RESOURCE_GROUP }} \
+            --location ${{ env.AZURE_REGION }} \
+            --output none
+          
+          echo "✅ Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
+
+      - name: Validate Bicep template
+        run: |
+          echo "🔍 Validating Bicep template..."
+          
+          # Export environment variables for bicepparam
+          export GOOGLE_OAUTH_CLIENT_ID="${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}"
+          export GOOGLE_OAUTH_CLIENT_SECRET="${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}"
+          export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
+          export GOOGLE_DRIVE_ROOT_FOLDER_ID="${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}"
+          export GOOGLE_DRIVE_CREDENTIALS="${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}"
+          
+          az deployment group validate \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file ./infra/main.bicep \
+            --parameters ./infra/main.bicepparam \
+            --parameters environmentName=${{ github.event.inputs.environment || 'dev' }}
+          
+          echo "✅ Bicep template validation successful"
+
+      - name: Deploy Bicep infrastructure
+        if: github.event.inputs.validation_only != 'true'
+        run: |
+          echo "🚀 Deploying infrastructure..."
+          
+          # Export environment variables for bicepparam
+          export GOOGLE_OAUTH_CLIENT_ID="${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}"
+          export GOOGLE_OAUTH_CLIENT_SECRET="${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}"
+          export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
+          export GOOGLE_DRIVE_ROOT_FOLDER_ID="${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}"
+          export GOOGLE_DRIVE_CREDENTIALS="${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}"
+          
+          az deployment group create \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --template-file ./infra/main.bicep \
+            --parameters ./infra/main.bicepparam \
+            --parameters environmentName=${{ github.event.inputs.environment || 'dev' }} \
+            --name "infra-deployment-$(date +%Y%m%d-%H%M%S)"
+          
+          echo "✅ Infrastructure deployment completed"
+
+      - name: Get deployment outputs
+        if: github.event.inputs.validation_only != 'true'
+        id: get-outputs
+        run: |
+          echo "📊 Getting deployment outputs..."
+          
+          # Get the latest deployment
+          DEPLOYMENT_NAME=$(az deployment group list \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[0].name" -o tsv)
+          
+          # Get outputs
+          OUTPUTS=$(az deployment group show \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --name "$DEPLOYMENT_NAME" \
+            --query properties.outputs -o json)
+          
+          # Extract values
+          FRONTEND_URL=$(echo $OUTPUTS | jq -r '.frontendUrl.value // ""')
+          BACKEND_URL=$(echo $OUTPUTS | jq -r '.backendUrl.value // ""')
+          
+          # Extract FQDNs (remove https://)
+          FRONTEND_FQDN=$(echo $FRONTEND_URL | sed 's|https://||')
+          BACKEND_FQDN=$(echo $BACKEND_URL | sed 's|https://||')
+          
+          # Set outputs
+          echo "frontend-url=$FRONTEND_URL" >> $GITHUB_OUTPUT
+          echo "backend-url=$BACKEND_URL" >> $GITHUB_OUTPUT
+          echo "frontend-fqdn=$FRONTEND_FQDN" >> $GITHUB_OUTPUT
+          echo "backend-fqdn=$BACKEND_FQDN" >> $GITHUB_OUTPUT
+          
+          echo "✅ Outputs captured"
+
+      - name: Display deployment summary
+        if: github.event.inputs.validation_only != 'true'
+        run: |
+          echo ""
+          echo "╔═══════════════════════════════════════════════════════════╗"
+          echo "║       INFRASTRUCTURE DEPLOYMENT COMPLETED                 ║"
+          echo "╚═══════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "🌐 Application URLs:"
+          echo "   Frontend: ${{ steps.get-outputs.outputs.frontend-url }}"
+          echo "   Backend:  ${{ steps.get-outputs.outputs.backend-url }}"
+          echo ""
+          echo "📦 Resources:"
+          
+          # List key resources
+          az containerapp list \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "[].{Name:name, FQDN:properties.configuration.ingress.fqdn, Status:properties.runningStatus}" \
+            -o table
+          
+          echo ""
+          echo "🔐 OAuth Configuration:"
+          echo "   Frontend FQDN: ${{ steps.get-outputs.outputs.frontend-fqdn }}"
+          echo "   Redirect URI:  https://${{ steps.get-outputs.outputs.frontend-fqdn }}/callback"
+          echo ""
+          echo "⚠️  IMPORTANT: Configure this redirect URI in Google Cloud Console:"
+          echo "   https://console.cloud.google.com/ → APIs & Services → Credentials"
+          echo ""
+
+      - name: Verify OAuth configuration
+        if: github.event.inputs.validation_only != 'true' && github.event.inputs.force_update_oauth != 'false'
+        run: |
+          echo "🔍 Verifying OAuth configuration..."
+          
+          BACKEND_APP="photosmarket-backend-${{ github.event.inputs.environment || 'dev' }}"
+          FRONTEND_FQDN="${{ steps.get-outputs.outputs.frontend-fqdn }}"
+          
+          # Get current FRONTEND_URL from Backend
+          CURRENT_FRONTEND_URL=$(az containerapp show \
+            --name "$BACKEND_APP" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.template.containers[0].env[?name=='FRONTEND_URL'].value" -o tsv 2>/dev/null || echo "")
+          
+          echo "Current FRONTEND_URL: $CURRENT_FRONTEND_URL"
+          echo "Expected: https://${FRONTEND_FQDN}"
+          
+          # Check if update is needed
+          if [ "$CURRENT_FRONTEND_URL" != "https://${FRONTEND_FQDN}" ]; then
+            echo "⚠️  FRONTEND_URL mismatch detected!"
+            echo "   Updating Backend with correct Frontend URL..."
+            
+            az containerapp update \
+              --name "$BACKEND_APP" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --set-env-vars "FRONTEND_URL=https://${FRONTEND_FQDN}" \
+              --output none
+            
+            echo "✅ Backend updated with correct FRONTEND_URL"
+          else
+            echo "✅ FRONTEND_URL is correct"
+          fi
+          
+          # Verify scopes
+          SCOPES=$(az containerapp show \
+            --name "$BACKEND_APP" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.template.containers[0].env[?contains(name, 'GoogleOAuth__Scopes')].{name:name, value:value}" -o json)
+          
+          SCOPE_COUNT=$(echo "$SCOPES" | jq '. | length')
+          
+          echo ""
+          echo "📋 OAuth Scopes configured: $SCOPE_COUNT"
+          echo "$SCOPES" | jq -r '.[] | "   - \(.name): \(.value)"'
+          
+          if [ "$SCOPE_COUNT" -lt 3 ]; then
+            echo "⚠️  WARNING: Expected 3 scopes, found $SCOPE_COUNT"
+            echo "   This may cause OAuth errors."
+            echo "   Recommended: Run Fix-AzureOAuthConfig.ps1 script locally"
+          else
+            echo "✅ OAuth scopes configuration looks good"
+          fi
+
+      - name: Validation only summary
+        if: github.event.inputs.validation_only == 'true'
+        run: |
+          echo ""
+          echo "╔═══════════════════════════════════════════════════════════╗"
+          echo "║          VALIDATION COMPLETED SUCCESSFULLY                ║"
+          echo "╚═══════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "✅ Bicep template is valid"
+          echo "✅ All required secrets are configured"
+          echo ""
+          echo "ℹ️  No deployment was performed (validation_only=true)"
+          echo "   To deploy, run this workflow again with validation_only=false"
+          echo ""
+
+      - name: Logout from Azure
+        if: always()
+        run: az logout
+
+  update-service-urls:
+    name: Update Service URLs
+    needs: [deploy-infrastructure]
+    if: |
+      always() && 
+      needs.deploy-infrastructure.result == 'success' &&
+      github.event.inputs.validation_only != 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
+    permissions:
+      id-token: write
+      contents: read
+    
+    steps:
+      - name: Log in to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Update Frontend with Backend URL
+        run: |
+          echo "🔄 Updating Frontend with Backend URL..."
+          
+          FRONTEND_APP="photosmarket-frontend-${{ github.event.inputs.environment || 'dev' }}"
+          BACKEND_FQDN="${{ needs.deploy-infrastructure.outputs.backend-fqdn }}"
+          
+          az containerapp update \
+            --name "$FRONTEND_APP" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --set-env-vars "VITE_API_URL=https://${BACKEND_FQDN}" \
+            --output none
+          
+          echo "✅ Frontend updated: VITE_API_URL=https://${BACKEND_FQDN}"
+
+      - name: Update Backend with Frontend URL
+        run: |
+          echo "🔄 Updating Backend with Frontend URL..."
+          
+          BACKEND_APP="photosmarket-backend-${{ github.event.inputs.environment || 'dev' }}"
+          FRONTEND_FQDN="${{ needs.deploy-infrastructure.outputs.frontend-fqdn }}"
+          
+          az containerapp update \
+            --name "$BACKEND_APP" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --set-env-vars "FRONTEND_URL=https://${FRONTEND_FQDN}" \
+            --output none
+          
+          echo "✅ Backend updated: FRONTEND_URL=https://${FRONTEND_FQDN}"
+
+      - name: Display final configuration
+        run: |
+          echo ""
+          echo "╔═══════════════════════════════════════════════════════════╗"
+          echo "║           SERVICE URLS UPDATED SUCCESSFULLY               ║"
+          echo "╚═══════════════════════════════════════════════════════════╝"
+          echo ""
+          echo "🔗 Cross-references configured:"
+          echo "   Frontend → Backend: https://${{ needs.deploy-infrastructure.outputs.backend-fqdn }}"
+          echo "   Backend → Frontend: https://${{ needs.deploy-infrastructure.outputs.frontend-fqdn }}"
+          echo ""
+          echo "✅ Applications are now fully synchronized"
+          echo ""
+          echo "🎯 Next Steps:"
+          echo "   1. Open: https://${{ needs.deploy-infrastructure.outputs.frontend-fqdn }}"
+          echo "   2. Test the login flow"
+          echo "   3. Verify Google Cloud Console has redirect URI:"
+          echo "      https://${{ needs.deploy-infrastructure.outputs.frontend-fqdn }}/callback"
+          echo ""
+
+      - name: Logout from Azure
+        if: always()
+        run: az logout

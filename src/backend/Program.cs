@@ -27,17 +27,32 @@ builder.Services.Configure<GooglePhotosSettings>(options =>
 {
     builder.Configuration.GetSection("GoogleOAuth").Bind(options);
     
+    Console.WriteLine($"📋 OAuth Configuration Loaded:");
+    Console.WriteLine($"  - ClientId: {(string.IsNullOrEmpty(options.ClientId) ? "EMPTY" : options.ClientId.Substring(0, Math.Min(20, options.ClientId.Length)) + "...")}");
+    Console.WriteLine($"  - ClientSecret: {(string.IsNullOrEmpty(options.ClientSecret) ? "EMPTY" : "***set***")}");
+    Console.WriteLine($"  - Scopes Count: {options.Scopes?.Count ?? 0}");
+    
+    if (options.Scopes != null && options.Scopes.Any())
+    {
+        foreach (var scope in options.Scopes)
+        {
+            Console.WriteLine($"    ✓ {scope}");
+        }
+    }
+    else
+    {
+        Console.WriteLine($"    ❌ WARNING: No scopes configured! This will cause OAuth errors.");
+    }
+    
     if (!string.IsNullOrEmpty(frontendUrlForRedirect))
     {
         // Use Azure frontend URL in production
         options.RedirectUri = $"{frontendUrlForRedirect}/callback";
-        Console.WriteLine($"🔐 OAuth Redirect URI: {options.RedirectUri}");
-        Console.WriteLine($"🔐 OAuth Client ID: {(string.IsNullOrEmpty(options.ClientId) ? "EMPTY" : options.ClientId.Substring(0, Math.Min(20, options.ClientId.Length)) + "...")}");
+        Console.WriteLine($"  - Redirect URI: {options.RedirectUri} (from environment)");
     }
     else
     {
-        Console.WriteLine($"🔐 OAuth Redirect URI: {options.RedirectUri} (local)");
-        Console.WriteLine($"🔐 OAuth Client ID: {(string.IsNullOrEmpty(options.ClientId) ? "EMPTY" : options.ClientId.Substring(0, Math.Min(20, options.ClientId.Length)) + "...")}");
+        Console.WriteLine($"  - Redirect URI: {options.RedirectUri} (from config)");
     }
 });
 

@@ -41,6 +41,40 @@ public class GoogleOAuthService : IGoogleOAuthService
     /// </summary>
     public string GetAuthorizationUrl(string state)
     {
+        // Log configuration check
+        _logger.LogInformation("🔍 GoogleOAuth Settings Check:");
+        _logger.LogInformation("  - ClientId: {ClientId}", string.IsNullOrEmpty(_settings.ClientId) ? "EMPTY" : _settings.ClientId.Substring(0, Math.Min(20, _settings.ClientId.Length)) + "...");
+        _logger.LogInformation("  - RedirectUri: {RedirectUri}", _settings.RedirectUri);
+        _logger.LogInformation("  - Scopes Count: {ScopesCount}", _settings.Scopes?.Count ?? 0);
+        
+        if (_settings.Scopes != null && _settings.Scopes.Any())
+        {
+            foreach (var scope in _settings.Scopes)
+            {
+                _logger.LogInformation("    - Scope: {Scope}", scope);
+            }
+        }
+        else
+        {
+            _logger.LogError("❌ Scopes are NULL or EMPTY! This will cause 'Missing required parameter: scope' error");
+        }
+
+        // Validate required settings
+        if (string.IsNullOrEmpty(_settings.ClientId))
+        {
+            throw new InvalidOperationException("GoogleOAuth:ClientId is not configured");
+        }
+        
+        if (string.IsNullOrEmpty(_settings.RedirectUri))
+        {
+            throw new InvalidOperationException("GoogleOAuth:RedirectUri is not configured");
+        }
+        
+        if (_settings.Scopes == null || !_settings.Scopes.Any())
+        {
+            throw new InvalidOperationException("GoogleOAuth:Scopes is not configured or empty. At minimum, you need: openid, https://www.googleapis.com/auth/userinfo.email, https://www.googleapis.com/auth/userinfo.profile");
+        }
+
         var flow = new GoogleAuthorizationCodeFlow(new GoogleAuthorizationCodeFlow.Initializer
         {
             ClientSecrets = new ClientSecrets
@@ -56,6 +90,8 @@ public class GoogleOAuthService : IGoogleOAuthService
         
         var authUrl = codeRequestUrl.Build().ToString();
         
+        _logger.LogInformation("🔗 Generated base auth URL (length: {Length})", authUrl.Length);
+        
         // Agregar parámetros para obtener refresh token
         if (!authUrl.Contains("access_type="))
         {
@@ -68,7 +104,8 @@ public class GoogleOAuthService : IGoogleOAuthService
             authUrl += "&prompt=consent";
         }
         
-        _logger.LogInformation("Generated auth URL with offline access and consent prompt");
+        _logger.LogInformation("✅ Final auth URL with offline access and consent prompt");
+        _logger.LogInformation("🔗 Auth URL: {AuthUrl}", authUrl);
         
         return authUrl;
     }
