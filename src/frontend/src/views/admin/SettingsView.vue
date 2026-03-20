@@ -147,6 +147,87 @@
       </div>
     </div>
     
+    <!-- Discount Configuration -->
+    <div class="card mb-6">
+      <h2 class="text-lg sm:text-xl font-semibold mb-6">Sistema de Descuentos</h2>
+      
+      <div class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Mínimo de fotos -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Mínimo de Fotos para Descuento
+            </label>
+            <input 
+              type="number"
+              v-model.number="bulkDiscountMinPhotos"
+              @input="hasDiscountChanges = true"
+              min="2"
+              step="1"
+              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg font-semibold"
+            >
+            <p class="text-xs text-gray-500 mt-1">
+              Cantidad mínima de fotos para aplicar descuento
+            </p>
+          </div>
+          
+          <!-- Porcentaje de descuento -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              Porcentaje de Descuento
+            </label>
+            <div class="flex items-center gap-2">
+              <input 
+                type="number"
+                v-model.number="bulkDiscountPercentage"
+                @input="hasDiscountChanges = true"
+                min="0"
+                max="100"
+                step="1"
+                class="w-32 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-lg font-semibold"
+              >
+              <span class="text-2xl font-bold">%</span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">
+              Porcentaje de descuento a aplicar
+            </p>
+          </div>
+        </div>
+        
+        <!-- Preview de descuento -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p class="text-sm text-blue-800 font-medium mb-2">Vista Previa del Descuento:</p>
+          <p class="text-sm text-blue-700">
+            Con <strong>{{ bulkDiscountMinPhotos }}</strong> fotos o más, los clientes obtendrán un <strong>{{ bulkDiscountPercentage }}%</strong> de descuento.
+          </p>
+          <p class="text-xs text-blue-600 mt-2">
+            Ejemplo: {{ bulkDiscountMinPhotos }} fotos × {{ currencySymbol }}{{ photoPrice.toLocaleString('es-CL') }} = 
+            <span class="line-through">{{ currencySymbol }}{{ (bulkDiscountMinPhotos * photoPrice).toLocaleString('es-CL') }}</span>
+            → <strong>{{ currencySymbol }}{{ Math.round((bulkDiscountMinPhotos * photoPrice) * (1 - bulkDiscountPercentage / 100)).toLocaleString('es-CL') }}</strong>
+          </p>
+        </div>
+        
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button 
+            @click="saveDiscount"
+            :disabled="!hasDiscountChanges || savingDiscount"
+            class="btn btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            <Icon name="save" :size="18" class="mr-2" />
+            {{ savingDiscount ? 'Guardando...' : 'Guardar Descuentos' }}
+          </button>
+          
+          <button 
+            @click="resetDiscount"
+            :disabled="!hasDiscountChanges"
+            class="btn btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Descartar
+          </button>
+        </div>
+      </div>
+    </div>
+    
     <!-- System Info -->
     <div class="card bg-gray-50">
       <h2 class="text-lg sm:text-xl font-semibold mb-4">Información del Sistema</h2>
@@ -197,6 +278,11 @@ const currency = ref('CLP')
 const hasPriceChanges = ref(false)
 const savingPrice = ref(false)
 
+const bulkDiscountMinPhotos = ref(5)
+const bulkDiscountPercentage = ref(20)
+const hasDiscountChanges = ref(false)
+const savingDiscount = ref(false)
+
 const currencySymbol = computed(() => {
   const symbols = {
     'CLP': '$',
@@ -218,6 +304,9 @@ async function loadPhotographerSettings() {
       watermarkText.value = response.data.watermarkText || ''
       photoPrice.value = response.data.photoPrice || 5.00
       currency.value = response.data.currency || 'CLP'
+      bulkDiscountMinPhotos.value = response.data.bulkDiscountMinPhotos || 5
+      bulkDiscountPercentage.value = response.data.bulkDiscountPercentage || 20
+      
       adminStore.setWatermarkText(response.data.watermarkText || '')
       
       // Persistir el precio y moneda en localStorage
@@ -227,7 +316,9 @@ async function loadPhotographerSettings() {
       console.log('Settings loaded:', {
         watermarkText: response.data.watermarkText,
         photoPrice: response.data.photoPrice,
-        currency: response.data.currency
+        currency: response.data.currency,
+        bulkDiscountMinPhotos: response.data.bulkDiscountMinPhotos,
+        bulkDiscountPercentage: response.data.bulkDiscountPercentage
       })
     }
   } catch (error) {
@@ -246,7 +337,9 @@ async function saveWatermark() {
       watermarkText: watermarkText.value,
       watermarkOpacity: 0.5,
       photoPrice: photoPrice.value,
-      currency: currency.value
+      currency: currency.value,
+      bulkDiscountMinPhotos: bulkDiscountMinPhotos.value,
+      bulkDiscountPercentage: bulkDiscountPercentage.value
     })
     
     if (response.success) {
@@ -276,7 +369,9 @@ async function savePrice() {
       watermarkText: watermarkText.value,
       watermarkOpacity: 0.5,
       photoPrice: photoPrice.value,
-      currency: currency.value
+      currency: currency.value,
+      bulkDiscountMinPhotos: bulkDiscountMinPhotos.value,
+      bulkDiscountPercentage: bulkDiscountPercentage.value
     })
     
     if (response.success) {
@@ -305,6 +400,46 @@ async function savePrice() {
 async function resetPrice() {
   await loadPhotographerSettings()
   hasPriceChanges.value = false
+  toast.info('Cambios descartados')
+}
+
+async function saveDiscount() {
+  savingDiscount.value = true
+  
+  try {
+    const response = await adminService.updatePhotographerSettings({
+      watermarkText: watermarkText.value,
+      watermarkOpacity: 0.5,
+      photoPrice: photoPrice.value,
+      currency: currency.value,
+      bulkDiscountMinPhotos: bulkDiscountMinPhotos.value,
+      bulkDiscountPercentage: bulkDiscountPercentage.value
+    })
+    
+    if (response.success) {
+      hasDiscountChanges.value = false
+      
+      // Recargar la configuración en los stores
+      await adminStore.loadConfig()
+      await cartStore.loadConfig()
+      
+      toast.success('Descuentos actualizados exitosamente')
+      console.log('✅ Descuentos actualizados:', {
+        minPhotos: bulkDiscountMinPhotos.value,
+        percentage: bulkDiscountPercentage.value
+      })
+    }
+  } catch (error) {
+    console.error('Error saving discount:', error)
+    toast.error('Error al guardar los descuentos')
+  } finally {
+    savingDiscount.value = false
+  }
+}
+
+async function resetDiscount() {
+  await loadPhotographerSettings()
+  hasDiscountChanges.value = false
   toast.info('Cambios descartados')
 }
 

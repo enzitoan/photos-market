@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using PhotosMarket.API.Configuration;
 using PhotosMarket.API.Services;
 using PhotosMarket.API.Repositories;
 using PhotosMarket.API.DTOs;
@@ -15,17 +17,20 @@ public class PhotosController : ControllerBase
     private readonly GoogleDriveService _googleDriveService;
     private readonly IAlbumRepository _albumRepository;
     private readonly IPhotographerSettingsRepository _photographerSettingsRepository;
+    private readonly ApplicationSettings _appSettings;
     private readonly ILogger<PhotosController> _logger;
 
     public PhotosController(
         GoogleDriveService googleDriveService,
         IAlbumRepository albumRepository,
         IPhotographerSettingsRepository photographerSettingsRepository,
+        IOptions<ApplicationSettings> appSettings,
         ILogger<PhotosController> logger)
     {
         _googleDriveService = googleDriveService;
         _albumRepository = albumRepository;
         _photographerSettingsRepository = photographerSettingsRepository;
+        _appSettings = appSettings.Value;
         _logger = logger;
     }
 
@@ -47,7 +52,9 @@ public class PhotosController : ControllerBase
                 WatermarkText = settings.WatermarkText,
                 WatermarkOpacity = settings.WatermarkOpacity,
                 PhotoPrice = settings.PhotoPrice,
-                Currency = settings.Currency
+                Currency = settings.Currency,
+                BulkDiscountMinPhotos = settings.BulkDiscountMinPhotos ?? _appSettings.BulkDiscountMinPhotos,
+                BulkDiscountPercentage = settings.BulkDiscountPercentage ?? _appSettings.BulkDiscountPercentage
             };
 
             return Ok(new ApiResponse<PublicConfigDto>

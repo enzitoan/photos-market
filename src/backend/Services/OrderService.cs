@@ -49,6 +49,8 @@ public class OrderService : IOrderService
         var settings = await _photographerSettingsRepository.GetSettingsAsync();
         var photoPrice = settings?.PhotoPrice ?? _appSettings.PhotoPricePerUnit;
         var currency = settings?.Currency ?? _appSettings.Currency;
+        var bulkDiscountMinPhotos = settings?.BulkDiscountMinPhotos ?? _appSettings.BulkDiscountMinPhotos;
+        var bulkDiscountPercentage = settings?.BulkDiscountPercentage ?? _appSettings.BulkDiscountPercentage;
 
         var order = new Order
         {
@@ -69,7 +71,23 @@ public class OrderService : IOrderService
             CreatedAt = DateTime.UtcNow
         };
 
-        order.TotalAmount = order.Photos.Sum(p => p.Price);
+        // Calculate subtotal
+        order.Subtotal = order.Photos.Sum(p => p.Price);
+
+        // Apply bulk discount if applicable
+        var photoCount = order.Photos.Count;
+        if (photoCount >= bulkDiscountMinPhotos)
+        {
+            order.DiscountPercentage = bulkDiscountPercentage;
+            order.DiscountAmount = order.Subtotal * (order.DiscountPercentage.Value / 100m);
+            order.TotalAmount = order.Subtotal - order.DiscountAmount;
+        }
+        else
+        {
+            order.DiscountPercentage = null;
+            order.DiscountAmount = 0;
+            order.TotalAmount = order.Subtotal;
+        }
 
         order = await _orderRepository.CreateAsync(order);
 

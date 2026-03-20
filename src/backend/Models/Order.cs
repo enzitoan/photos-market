@@ -16,6 +16,15 @@ public class Order
     [JsonProperty("photos")]
     public List<OrderPhoto> Photos { get; set; } = new();
 
+    [JsonProperty("subtotal")]
+    public decimal Subtotal { get; set; }
+
+    [JsonProperty("discountPercentage")]
+    public decimal? DiscountPercentage { get; set; }
+
+    [JsonProperty("discountAmount")]
+    public decimal DiscountAmount { get; set; }
+
     [JsonProperty("totalAmount")]
     public decimal TotalAmount { get; set; }
 

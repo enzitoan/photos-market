@@ -31,6 +31,12 @@ public class PhotographerSettings
     [JsonProperty("currency")]
     public string Currency { get; set; } = "CLP";
 
+    [JsonProperty("bulkDiscountMinPhotos")]
+    public int? BulkDiscountMinPhotos { get; set; }
+
+    [JsonProperty("bulkDiscountPercentage")]
+    public decimal? BulkDiscountPercentage { get; set; }
+
     [JsonProperty("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

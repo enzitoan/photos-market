@@ -9,7 +9,8 @@ Aplicación web completa que permite a los clientes comprar fotografías de alta
 - 📁 Navegación por álbumes del fotógrafo
 - 🖼️ Visualización de miniaturas con marca de agua
 - 🛒 Carrito de compras para seleccionar múltiples fotos
-- 📋 Proceso de pedido mediante transferencia electrónica
+- � Sistema de descuentos automáticos (20% desde 5 fotos)
+- �📋 Proceso de pedido mediante transferencia electrónica
 - 📥 Descarga de fotos en alta resolución tras confirmar el pago
 - ⏰ Enlaces de descarga con vigencia de 72 horas
 - 📱 Interfaz moderna y responsiva
@@ -405,10 +406,17 @@ El archivo `src/backend/appsettings.json` contiene:
     "DownloadLinkExpirationHours": 72,
     "WatermarkText": "PhotosMarket © {YEAR}",
     "PhotoPricePerUnit": 1000,  // Precio en CLP
-    "Currency": "CLP"
+    "Currency": "CLP",
+    "BulkDiscountMinPhotos": 5,  // Mínimo de fotos para descuento
+    "BulkDiscountPercentage": 20  // Porcentaje de descuento
   }
 }
 ```
+
+**Sistema de Descuentos:**
+- **BulkDiscountMinPhotos**: Cantidad mínima de fotos para aplicar descuento (default: 5)
+- **BulkDiscountPercentage**: Porcentaje de descuento a aplicar (default: 20%)
+- Ejemplo: Con 5 fotos a $1,000 c/u → Subtotal $5,000 → Descuento 20% = -$1,000 → **Total $4,000**
 
 Ver `appsettings.template.json` como referencia completa.
 
@@ -500,7 +508,7 @@ Puertos permitidos por defecto:
 
 - [ ] **Registrar Usuarios** - Solicitar Rut y Fecha de Nacimiento en el primer login, guardar nombre y email de contacto.
 - [ ] **Email de Confirmación** - Enviar email automático al crear pedido con instrucciones de pago.
-- [ ] **Sistema de Cupones** - Descuentos y promociones
+- [x] **Sistema de Cupones** - Descuentos y promociones ✅ **IMPLEMENTADO**: Descuento del 20% desde 5 fotos
 - [ ] **Enlace de Descarga por Email** - Enviar enlace de descarga automático al confirmar pago.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago
 - [ ] **Marca de Agua Server-Side** - Usar ImageSharp para mayor seguridad

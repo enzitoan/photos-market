@@ -82,6 +82,9 @@ public class CartItemDto
 public class CartDto
 {
     public List<CartItemDto> Items { get; set; } = new();
+    public decimal Subtotal { get; set; }
+    public decimal? DiscountPercentage { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public string Currency { get; set; } = "USD";
 }
@@ -107,6 +110,9 @@ public class OrderDto
     public string Id { get; set; } = string.Empty;
     public string UserEmail { get; set; } = string.Empty;
     public List<OrderPhotoDto> Photos { get; set; } = new();
+    public decimal Subtotal { get; set; }
+    public decimal? DiscountPercentage { get; set; }
+    public decimal DiscountAmount { get; set; }
     public decimal TotalAmount { get; set; }
     public string Currency { get; set; } = "USD";
     public string Status { get; set; } = string.Empty;
@@ -137,6 +143,8 @@ public class PublicConfigDto
     public float WatermarkOpacity { get; set; }
     public decimal PhotoPrice { get; set; }
     public string Currency { get; set; } = "CLP";
+    public int BulkDiscountMinPhotos { get; set; }
+    public decimal BulkDiscountPercentage { get; set; }
 }
 
 // Response wrapper

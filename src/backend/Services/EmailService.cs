@@ -42,6 +42,15 @@ public class EmailService : IEmailService
         message.To.Add(new MailboxAddress("", userEmail));
         message.Subject = $"Confirmación de Pedido #{order.Id.Substring(0, 8)}";
 
+        // Construir sección de descuento si aplica
+        var discountSection = "";
+        if (order.DiscountPercentage.HasValue && order.DiscountPercentage.Value > 0)
+        {
+            discountSection = $@"
+                        <li><strong>Subtotal:</strong> {order.Currency} {order.Subtotal:F2}</li>
+                        <li style='color: green;'><strong>Descuento ({order.DiscountPercentage.Value}%):</strong> -{order.Currency} {order.DiscountAmount:F2}</li>";
+        }
+
         var bodyBuilder = new BodyBuilder
         {
             HtmlBody = $@"
@@ -54,7 +63,8 @@ public class EmailService : IEmailService
                     <ul>
                         <li><strong>Número de Pedido:</strong> {order.Id.Substring(0, 8).ToUpper()}</li>
                         <li><strong>Cantidad de Fotos:</strong> {order.Photos.Count}</li>
-                        <li><strong>Total:</strong> {order.Currency} {order.TotalAmount:F2}</li>
+                        {discountSection}
+                        <li><strong>Total a Pagar:</strong> {order.Currency} {order.TotalAmount:F2}</li>
                         <li><strong>Fecha:</strong> {order.CreatedAt:dd/MM/yyyy HH:mm}</li>
                     </ul>
 

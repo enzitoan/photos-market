@@ -11,9 +11,28 @@ export const useCartStore = defineStore('cart', () => {
   const pricePerPhoto = ref(5.00) // Default inicial
   const currency = ref('CLP') // Default inicial
   const configLoaded = ref(false)
+  const bulkDiscountMinPhotos = ref(5) // Mínimo de fotos para descuento
+  const bulkDiscountPercentage = ref(20) // Porcentaje de descuento
   
   const totalItems = computed(() => items.value.length)
-  const totalAmount = computed(() => items.value.length * pricePerPhoto.value)
+  
+  // Subtotal sin descuento
+  const subtotal = computed(() => items.value.length * pricePerPhoto.value)
+  
+  // Descuento aplicable
+  const discountPercentage = computed(() => {
+    return totalItems.value >= bulkDiscountMinPhotos.value ? bulkDiscountPercentage.value : 0
+  })
+  
+  const discountAmount = computed(() => {
+    if (discountPercentage.value > 0) {
+      return subtotal.value * (discountPercentage.value / 100)
+    }
+    return 0
+  })
+  
+  // Total con descuento
+  const totalAmount = computed(() => subtotal.value - discountAmount.value)
   
   const currencySymbol = computed(() => {
     const symbols = {
@@ -38,19 +57,36 @@ export const useCartStore = defineStore('cart', () => {
         // El backend serializa en camelCase por defecto
         const price = response.data.data.photoPrice || response.data.data.PhotoPrice || 5.00
         const curr = response.data.data.currency || response.data.data.Currency || 'CLP'
+        const minPhotos = response.data.data.bulkDiscountMinPhotos || response.data.data.BulkDiscountMinPhotos || 5
+        const discountPct = response.data.data.bulkDiscountPercentage || response.data.data.BulkDiscountPercentage || 20
+        
         pricePerPhoto.value = price
         currency.value = curr
+        bulkDiscountMinPhotos.value = minPhotos
+        bulkDiscountPercentage.value = discountPct
+        
         // Persistir en localStorage
         localStorage.setItem('photoPrice', price.toString())
         localStorage.setItem('currency', curr)
+        localStorage.setItem('bulkDiscountMinPhotos', minPhotos.toString())
+        localStorage.setItem('bulkDiscountPercentage', discountPct.toString())
+        
         configLoaded.value = true
-        console.log('✅ Configuración cargada desde backend:', { price, currency: curr })
+        console.log('✅ Configuración cargada desde backend:', { 
+          price, 
+          currency: curr, 
+          minPhotos, 
+          discountPct 
+        })
       }
     } catch (error) {
       console.error('❌ Error loading config:', error)
       // Intentar cargar desde localStorage como fallback
       const storedPrice = localStorage.getItem('photoPrice')
       const storedCurrency = localStorage.getItem('currency')
+      const storedMinPhotos = localStorage.getItem('bulkDiscountMinPhotos')
+      const storedDiscountPct = localStorage.getItem('bulkDiscountPercentage')
+      
       if (storedPrice) {
         pricePerPhoto.value = parseFloat(storedPrice)
         console.log('📦 Precio cargado desde localStorage:', pricePerPhoto.value)
@@ -58,6 +94,14 @@ export const useCartStore = defineStore('cart', () => {
       if (storedCurrency) {
         currency.value = storedCurrency
         console.log('📦 Moneda cargada desde localStorage:', currency.value)
+      }
+      if (storedMinPhotos) {
+        bulkDiscountMinPhotos.value = parseInt(storedMinPhotos)
+        console.log('📦 Descuento mínimo cargado desde localStorage:', bulkDiscountMinPhotos.value)
+      }
+      if (storedDiscountPct) {
+        bulkDiscountPercentage.value = parseFloat(storedDiscountPct)
+        console.log('📦 Porcentaje de descuento cargado desde localStorage:', bulkDiscountPercentage.value)
       }
     }
   }
@@ -103,11 +147,16 @@ export const useCartStore = defineStore('cart', () => {
   return {
     items,
     totalItems,
+    subtotal,
+    discountPercentage,
+    discountAmount,
     totalAmount,
     pricePerPhoto,
     currency,
     currencySymbol,
     configLoaded,
+    bulkDiscountMinPhotos,
+    bulkDiscountPercentage,
     addToCart,
     removeFromCart,
     clearCart,

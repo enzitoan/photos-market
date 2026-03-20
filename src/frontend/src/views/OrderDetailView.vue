@@ -50,8 +50,16 @@
                   <span class="text-gray-600">Total de fotos:</span>
                   <span class="font-medium">{{ order.photos.length }}</span>
                 </div>
-                <div class="flex justify-between">
-                  <span class="text-gray-600">Total a pagar:</span>
+                <div v-if="order.subtotal" class="flex justify-between">
+                  <span class="text-gray-600">Subtotal:</span>
+                  <span class="font-medium">${{ Math.round(order.subtotal).toLocaleString('es-CL') }} {{ order.currency }}</span>
+                </div>
+                <div v-if="order.discountPercentage && order.discountPercentage > 0" class="flex justify-between text-green-600">
+                  <span>Descuento ({{ order.discountPercentage }}%):</span>
+                  <span>-${{ Math.round(order.discountAmount).toLocaleString('es-CL') }} {{ order.currency }}</span>
+                </div>
+                <div class="flex justify-between pt-2 border-t">
+                  <span class="text-gray-600 font-semibold">Total a pagar:</span>
                   <span class="font-medium text-lg">${{ Math.round(order.totalAmount).toLocaleString('es-CL') }} {{ order.currency }}</span>
                 </div>
               </div>

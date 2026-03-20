@@ -71,7 +71,23 @@
             <div class="space-y-2 mb-4 pb-4 border-b">
               <div class="flex justify-between">
                 <span class="text-gray-600">Subtotal ({{ cartStore.totalItems }} fotos)</span>
-                <span class="font-medium">{{ cartStore.currencySymbol }}{{ Math.round(cartStore.totalAmount).toLocaleString('es-CL') }}</span>
+                <span class="font-medium">{{ cartStore.currencySymbol }}{{ Math.round(cartStore.subtotal).toLocaleString('es-CL') }}</span>
+              </div>
+              
+              <!-- Mostrar descuento si aplica -->
+              <div v-if="cartStore.discountPercentage > 0" class="flex justify-between text-green-600">
+                <span>Descuento ({{ cartStore.discountPercentage }}%)</span>
+                <span>-{{ cartStore.currencySymbol }}{{ Math.round(cartStore.discountAmount).toLocaleString('es-CL') }}</span>
+              </div>
+              
+              <!-- Mensaje informativo sobre descuento -->
+              <div v-if="cartStore.discountPercentage === 0 && cartStore.totalItems > 0" class="text-sm text-blue-600 mt-2 p-2 bg-blue-50 rounded">
+                💡 ¡Agrega {{ cartStore.bulkDiscountMinPhotos - cartStore.totalItems }} foto(s) más y obtén {{ cartStore.bulkDiscountPercentage }}% de descuento!
+              </div>
+              
+              <!-- Mensaje de descuento aplicado -->
+              <div v-if="cartStore.discountPercentage > 0" class="text-sm text-green-600 mt-2 p-2 bg-green-50 rounded">
+                🎉 ¡Descuento de {{ cartStore.discountPercentage }}% aplicado!
               </div>
             </div>
             
