@@ -114,7 +114,7 @@
                   
                   <button 
                     v-if="order.status === 'AwaitingPayment'"
-                    @click="confirmPayment(order.id)"
+                    @click="openPaymentModal(order.id)"
                     :disabled="processingOrderId === order.id"
                     class="text-green-600 hover:text-green-700 disabled:opacity-50"
                     title="Confirmar pago"
@@ -250,7 +250,7 @@
           <div class="flex flex-col sm:flex-row gap-3">
             <button 
               v-if="selectedOrder.status === 'AwaitingPayment'"
-             @click="confirmPayment(selectedOrder.id); selectedOrder = null"
+             @click="openPaymentModal(selectedOrder.id); selectedOrder = null"
               class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
             >
               <Icon name="check" :size="18" class="mr-2" />
@@ -285,6 +285,56 @@
         </div>
       </div>
     </div>
+    
+    <!-- Payment Confirmation Modal -->
+    <div 
+      v-if="showPaymentModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      @click="showPaymentModal = false; paymentReference = ''; orderToConfirm = null"
+    >
+      <div 
+        class="bg-white rounded-lg max-w-md w-full p-6"
+        @click.stop
+      >
+        <h3 class="text-xl font-semibold mb-4">Confirmar Pago del Pedido</h3>
+        
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            Nº de Transacción / Operación *
+          </label>
+          <input 
+            v-model="paymentReference"
+            type="text"
+            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+            placeholder="Ej: 684549824"
+            @keyup.enter="confirmPayment(orderToConfirm)"
+          >
+        </div>
+        
+        <div class="bg-blue-50 p-3 rounded-md mb-4">
+          <p class="text-sm text-blue-800">
+            💡 <strong>Ingresa el número de transacción</strong> que el cliente proporcionó o que aparece en el comprobante de pago.
+          </p>
+        </div>
+        
+        <div class="flex gap-3">
+          <button 
+            @click="showPaymentModal = false; paymentReference = ''; orderToConfirm = null"
+            class="flex-1 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+            :disabled="processingOrderId === orderToConfirm"
+          >
+            Cancelar
+          </button>
+          <button 
+            @click="confirmPayment(orderToConfirm)"
+            class="flex-1 btn btn-primary"
+            :disabled="processingOrderId === orderToConfirm || !paymentReference.trim()"
+          >
+            {{ processingOrderId === orderToConfirm ? 'Confirmando...' : 'Confirmar Pago' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -303,6 +353,9 @@ const orders = ref([])
 const filter = ref('all')
 const selectedOrder = ref(null)
 const processingOrderId = ref(null)
+const showPaymentModal = ref(false)
+const paymentReference = ref('')
+const orderToConfirm = ref(null)
 
 const awaitingOrders = computed(() => orders.value.filter(o => o.status === 'AwaitingPayment'))
 const processingOrders = computed(() => orders.value.filter(o => o.status === 'Processing'))
@@ -329,10 +382,21 @@ async function loadOrders() {
 }
 
 async function confirmPayment(orderId) {
+  if (!paymentReference.value.trim()) {
+    toast.error('Debes ingresar el número de transacción')
+    return
+  }
+  
   try {
     processingOrderId.value = orderId
-    await ordersService.confirmPayment(orderId, 'Admin-Confirmed')
+    await ordersService.confirmPayment(orderId, paymentReference.value)
     toast.success('Pago confirmado - Pedido en preparación')
+    
+    // Limpiar y cerrar modal
+    showPaymentModal.value = false
+    paymentReference.value = ''
+    orderToConfirm.value = null
+    
     await loadOrders()
   } catch (err) {
     console.error('Error confirming payment:', err)
@@ -340,6 +404,12 @@ async function confirmPayment(orderId) {
   } finally {
     processingOrderId.value = null
   }
+}
+
+function openPaymentModal(orderId) {
+  orderToConfirm.value = orderId
+  paymentReference.value = ''
+  showPaymentModal.value = true
 }
 
 async function completeOrder(orderId) {
