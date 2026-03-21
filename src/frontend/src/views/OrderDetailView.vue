@@ -43,6 +43,10 @@
               <h3 class="text-sm font-semibold text-gray-500 mb-2">INFORMACIÓN DEL PEDIDO</h3>
               <div class="space-y-2">
                 <div class="flex justify-between">
+                  <span class="text-gray-600">Nombre:</span>
+                  <span class="font-medium">{{ order.userName || 'No especificado' }}</span>
+                </div>
+                <div class="flex justify-between">
                   <span class="text-gray-600">Email:</span>
                   <span class="font-medium">{{ order.userEmail }}</span>
                 </div>
@@ -79,6 +83,10 @@
                 <div v-else class="flex justify-between">
                   <span class="text-gray-600">Pagado:</span>
                   <span class="font-medium text-yellow-600">Pendiente</span>
+                </div>
+                <div v-if="order.paymentReference" class="flex justify-between pt-2 border-t">
+                  <span class="text-gray-600">Nº de Transacción:</span>
+                  <span class="font-medium font-mono text-sm">{{ order.paymentReference }}</span>
                 </div>
               </div>
             </div>

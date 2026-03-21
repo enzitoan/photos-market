@@ -120,7 +120,8 @@
                   <span class="text-xs sm:text-sm font-mono text-gray-900">#{{ order.id.substring(0, 8) }}</span>
                 </td>
                 <td class="px-2 sm:px-4 py-3 hidden md:table-cell">
-                  <div class="text-sm text-gray-900">{{ order.userEmail }}</div>
+                  <div class="text-sm font-medium text-gray-900">{{ order.userName || 'Sin nombre' }}</div>
+                  <div class="text-xs text-gray-500">{{ order.userEmail }}</div>
                 </td>
                 <td class="px-2 sm:px-4 py-3">
                   <div class="flex items-center">

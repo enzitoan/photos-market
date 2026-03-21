@@ -126,6 +126,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useCartStore } from '@/stores/cart'
+import { useAuthStore } from '@/stores/auth'
 import NavBar from '@/components/NavBar.vue'
 import ordersService from '@/services/ordersService'
 
@@ -177,8 +178,13 @@ async function handleCheckout() {
   try {
     isProcessing.value = true
     
+    // Obtener el nombre del usuario desde el store de auth
+    const authStore = useAuthStore()
+    const userName = authStore.user?.name || ''
+    
     // Preparar los datos de la orden según el formato que espera el backend
     const orderData = {
+      userName: userName,
       photos: cartStore.items.map(item => ({
         photoId: item.id,
         mediaItemId: item.mediaItemId,

@@ -92,6 +92,7 @@ public class CartDto
 // Order DTOs
 public class CreateOrderRequest
 {
+    public string UserName { get; set; } = string.Empty;
     public List<OrderPhotoDto> Photos { get; set; } = new();
 }
 
@@ -109,6 +110,7 @@ public class OrderDto
 {
     public string Id { get; set; } = string.Empty;
     public string UserEmail { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
     public List<OrderPhotoDto> Photos { get; set; } = new();
     public decimal Subtotal { get; set; }
     public decimal? DiscountPercentage { get; set; }

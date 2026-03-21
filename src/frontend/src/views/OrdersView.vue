@@ -55,6 +55,11 @@
             </div>
             
             <div class="flex justify-between">
+              <span class="text-gray-600">Nombre:</span>
+              <span class="font-medium">{{ order.userName || 'No especificado' }}</span>
+            </div>
+            
+            <div class="flex justify-between">
               <span class="text-gray-600">Email:</span>
               <span class="font-medium">{{ order.userEmail }}</span>
             </div>

@@ -70,7 +70,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import { useCartStore } from '@/stores/cart'
@@ -140,10 +140,42 @@ function closePhotoModal() {
   selectedPhoto.value = null
 }
 
+// Prevenir captura de pantalla y clic derecho
+function preventScreenCapture(e) {
+  // Prevenir PrintScreen, Ctrl+P, Cmd+P
+  if (
+    e.key === 'PrintScreen' ||
+    (e.ctrlKey && e.key === 'p') ||
+    (e.metaKey && e.key === 'p')
+  ) {
+    e.preventDefault()
+    toast.warning('La captura de pantalla está deshabilitada en esta sección')
+    return false
+  }
+}
+
+function preventContextMenu(e) {
+  e.preventDefault()
+  toast.warning('El clic derecho está deshabilitado en esta sección')
+  return false
+}
+
 onMounted(async () => {
   // Cargar precio desde backend
   await cartStore.loadConfig()
   // Cargar fotos del álbum
   loadPhotos()
+  
+  // Agregar event listeners para bloquear captura de pantalla y clic derecho
+  document.addEventListener('keyup', preventScreenCapture)
+  document.addEventListener('keydown', preventScreenCapture)
+  document.addEventListener('contextmenu', preventContextMenu)
+})
+
+onBeforeUnmount(() => {
+  // Remover event listeners al desmontar el componente
+  document.removeEventListener('keyup', preventScreenCapture)
+  document.removeEventListener('keydown', preventScreenCapture)
+  document.removeEventListener('contextmenu', preventContextMenu)
 })
 </script>

@@ -29,16 +29,22 @@ public class OrdersController : ControllerBase
         {
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
             var userEmail = User.FindFirst(ClaimTypes.Email)?.Value;
+            var userName = User.FindFirst(ClaimTypes.Name)?.Value ?? request.UserName;
 
             if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(userEmail))
                 return Unauthorized();
 
-            var order = await _orderService.CreateOrderAsync(userId, userEmail, request.Photos);
+            // Si no hay userName en los claims ni en la request, usar el email
+            if (string.IsNullOrEmpty(userName))
+                userName = userEmail.Split('@')[0];
+
+            var order = await _orderService.CreateOrderAsync(userId, userEmail, userName, request.Photos);
 
             var orderDto = new OrderDto
             {
                 Id = order.Id,
                 UserEmail = order.UserEmail,
+                UserName = order.UserName,
                 Photos = order.Photos.Select(p => new OrderPhotoDto
                 {
                     PhotoId = p.PhotoId,
@@ -88,6 +94,7 @@ public class OrdersController : ControllerBase
             {
                 Id = order.Id,
                 UserEmail = order.UserEmail,
+                UserName = order.UserName,
                 Photos = order.Photos.Select(p => new OrderPhotoDto
                 {
                     PhotoId = p.PhotoId,
@@ -139,6 +146,7 @@ public class OrdersController : ControllerBase
             {
                 Id = order.Id,
                 UserEmail = order.UserEmail,
+                UserName = order.UserName,
                 Photos = order.Photos.Select(p => new OrderPhotoDto
                 {
                     PhotoId = p.PhotoId,
@@ -188,6 +196,7 @@ public class OrdersController : ControllerBase
             {
                 Id = order.Id,
                 UserEmail = order.UserEmail,
+                UserName = order.UserName,
                 Photos = order.Photos.Select(p => new OrderPhotoDto
                 {
                     PhotoId = p.PhotoId,
@@ -235,6 +244,7 @@ public class OrdersController : ControllerBase
             {
                 Id = order.Id,
                 UserEmail = order.UserEmail,
+                UserName = order.UserName,
                 Photos = order.Photos.Select(p => new OrderPhotoDto
                 {
                     PhotoId = p.PhotoId,
@@ -287,6 +297,7 @@ public class OrdersController : ControllerBase
             {
                 Id = order.Id,
                 UserEmail = order.UserEmail,
+                UserName = order.UserName,
                 Photos = order.Photos.Select(p => new OrderPhotoDto
                 {
                     PhotoId = p.PhotoId,
@@ -334,6 +345,7 @@ public class OrdersController : ControllerBase
             {
                 Id = order.Id,
                 UserEmail = order.UserEmail,
+                UserName = order.UserName,
                 Photos = order.Photos.Select(p => new OrderPhotoDto
                 {
                     PhotoId = p.PhotoId,

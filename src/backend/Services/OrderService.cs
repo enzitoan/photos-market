@@ -8,7 +8,7 @@ namespace PhotosMarket.API.Services;
 
 public interface IOrderService
 {
-    Task<Order> CreateOrderAsync(string userId, string userEmail, List<OrderPhotoDto> photos);
+    Task<Order> CreateOrderAsync(string userId, string userEmail, string userName, List<OrderPhotoDto> photos);
     Task<Order?> GetOrderByIdAsync(string orderId, string userId);
     Task<List<Order>> GetUserOrdersAsync(string userId);
     Task<List<Order>> GetAllOrdersAsync();
@@ -43,7 +43,7 @@ public class OrderService : IOrderService
         _logger = logger;
     }
 
-    public async Task<Order> CreateOrderAsync(string userId, string userEmail, List<OrderPhotoDto> photos)
+    public async Task<Order> CreateOrderAsync(string userId, string userEmail, string userName, List<OrderPhotoDto> photos)
     {
         // Get current photographer settings for price and currency
         var settings = await _photographerSettingsRepository.GetSettingsAsync();
@@ -56,6 +56,7 @@ public class OrderService : IOrderService
         {
             UserId = userId,
             UserEmail = userEmail,
+            UserName = userName,
             Photos = photos.Select(p => new OrderPhoto
             {
                 PhotoId = p.PhotoId,

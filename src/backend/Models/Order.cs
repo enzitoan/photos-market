@@ -13,6 +13,9 @@ public class Order
     [JsonProperty("userEmail")]
     public string UserEmail { get; set; } = string.Empty;
 
+    [JsonProperty("userName")]
+    public string UserName { get; set; } = string.Empty;
+
     [JsonProperty("photos")]
     public List<OrderPhoto> Photos { get; set; } = new();
 

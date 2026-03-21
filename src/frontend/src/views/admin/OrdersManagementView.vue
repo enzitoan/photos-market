@@ -71,7 +71,8 @@
           <thead class="bg-gray-50">
             <tr>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pedido</th>
-              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Email</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Cliente</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Email</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fotos</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
@@ -83,6 +84,9 @@
             <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-gray-50">
               <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium">#{{ order.id.substring(0, 8) }}</td>
               <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden lg:table-cell">
+                <div class="font-medium">{{ order.userName || 'Sin nombre' }}</div>
+              </td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden md:table-cell">
                 <a :href="`mailto:${order.userEmail}`" class="text-primary-600 hover:text-primary-700">
                   {{ order.userEmail }}
                 </a>
@@ -175,6 +179,10 @@
           <div class="bg-gray-50 rounded-lg p-4 mb-6">
             <h3 class="font-semibold mb-3">Información del Cliente</h3>
             <div class="grid md:grid-cols-2 gap-3 text-sm">
+              <div>
+                <span class="font-medium text-gray-700">Nombre:</span>
+                <p class="text-gray-600">{{ selectedOrder.userName || 'No especificado' }}</p>
+              </div>
               <div>
                 <span class="font-medium text-gray-700">Email:</span>
                 <p class="text-gray-600">{{ selectedOrder.userEmail }}</p>
