@@ -57,7 +57,8 @@ public class OrdersController : ControllerBase
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
-                CreatedAt = order.CreatedAt
+                CreatedAt = order.CreatedAt,
+                PaymentReference = order.PaymentReference
             };
 
             return Ok(new ApiResponse<OrderDto>
@@ -108,7 +109,8 @@ public class OrdersController : ControllerBase
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                PaidAt = order.PaidAt
+                PaidAt = order.PaidAt,
+                PaymentReference = order.PaymentReference
             }).ToList();
 
             return Ok(new ApiResponse<List<OrderDto>>
@@ -160,7 +162,8 @@ public class OrdersController : ControllerBase
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                PaidAt = order.PaidAt
+                PaidAt = order.PaidAt,
+                PaymentReference = order.PaymentReference
             };
 
             return Ok(new ApiResponse<OrderDto>
@@ -210,7 +213,8 @@ public class OrdersController : ControllerBase
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                PaidAt = order.PaidAt
+                PaidAt = order.PaidAt,
+                PaymentReference = order.PaymentReference
             };
 
             return Ok(new ApiResponse<OrderDto>
@@ -259,7 +263,8 @@ public class OrdersController : ControllerBase
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
                 PaidAt = order.PaidAt,
-                ProcessedAt = order.ProcessedAt
+                ProcessedAt = order.ProcessedAt,
+                PaymentReference = order.PaymentReference
             };
 
             return Ok(new ApiResponse<OrderDto>
@@ -311,7 +316,8 @@ public class OrdersController : ControllerBase
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                PaidAt = order.PaidAt
+                PaidAt = order.PaidAt,
+                PaymentReference = order.PaymentReference
             };
 
             return Ok(new ApiResponse<OrderDto>
@@ -359,7 +365,8 @@ public class OrdersController : ControllerBase
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
                 CreatedAt = order.CreatedAt,
-                PaidAt = order.PaidAt
+                PaidAt = order.PaidAt,
+                PaymentReference = order.PaymentReference
             }).ToList();
 
             return Ok(new ApiResponse<List<OrderDto>>

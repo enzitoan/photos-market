@@ -121,6 +121,7 @@ public class OrderDto
     public DateTime CreatedAt { get; set; }
     public DateTime? PaidAt { get; set; }
     public DateTime? ProcessedAt { get; set; }
+    public string? PaymentReference { get; set; }
 }
 
 public class ConfirmPaymentRequest
