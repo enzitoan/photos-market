@@ -64,7 +64,10 @@
       v-if="selectedPhoto"
       :show="showPhotoModal"
       :photo="selectedPhoto"
+      :photos="filteredPhotos"
+      :currentIndex="selectedPhotoIndex"
       @close="closePhotoModal"
+      @navigate="navigateToPhoto"
     />
   </div>
 </template>
@@ -91,6 +94,7 @@ const photos = ref([])
 const showOnlyInCart = ref(false)
 const showPhotoModal = ref(false)
 const selectedPhoto = ref(null)
+const selectedPhotoIndex = ref(-1)
 
 const albumId = computed(() => route.params.id)
 
@@ -132,12 +136,22 @@ async function loadPhotos() {
 
 function openPhotoModal(photo) {
   selectedPhoto.value = photo
+  // Buscar índice en el array filtrado
+  selectedPhotoIndex.value = filteredPhotos.value.findIndex(p => p.id === photo.id)
   showPhotoModal.value = true
 }
 
 function closePhotoModal() {
   showPhotoModal.value = false
   selectedPhoto.value = null
+  selectedPhotoIndex.value = -1
+}
+
+function navigateToPhoto(newIndex) {
+  if (newIndex >= 0 && newIndex < filteredPhotos.value.length) {
+    selectedPhotoIndex.value = newIndex
+    selectedPhoto.value = filteredPhotos.value[newIndex]
+  }
 }
 
 // Prevenir captura de pantalla y clic derecho
