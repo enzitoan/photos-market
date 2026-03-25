@@ -526,6 +526,69 @@ jobs:
           
           echo "✅ Configuration updates have been applied"
 
+      - name: Verify CORS Configuration
+        run: |
+          echo "🔍 Verifying CORS configuration to prevent CORS errors..."
+          
+          BACKEND_APP="photosmarket-backend-${{ github.event.inputs.environment || 'dev' }}"
+          FRONTEND_FQDN="${{ needs.deploy-infrastructure.outputs.frontend-fqdn }}"
+          
+          echo ""
+          echo "Expected Frontend FQDN: https://${FRONTEND_FQDN}"
+          
+          # Get all environment variables from backend
+          ENV_VARS=$(az containerapp show \
+            --name "$BACKEND_APP" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query "properties.template.containers[0].env" -o json)
+          
+          # Extract FRONTEND_URL
+          CURRENT_FRONTEND_URL=$(echo "$ENV_VARS" | jq -r '.[] | select(.name=="FRONTEND_URL") | .value')
+          
+          echo "Current FRONTEND_URL: ${CURRENT_FRONTEND_URL:-NOT SET}"
+          
+          if [ "$CURRENT_FRONTEND_URL" != "https://${FRONTEND_FQDN}" ]; then
+            echo "❌ CORS Configuration ERROR: FRONTEND_URL does not match!"
+            echo "   Expected: https://${FRONTEND_FQDN}"
+            echo "   Current:  ${CURRENT_FRONTEND_URL:-NOT SET}"
+            echo ""
+            echo "🔄 Forcing backend restart to apply CORS configuration..."
+            
+            # Force restart by updating with the same value (triggers revision)
+            az containerapp update \
+              --name "$BACKEND_APP" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --set-env-vars "FRONTEND_URL=https://${FRONTEND_FQDN}" \
+              --output none
+            
+            echo "⏳ Waiting 30 seconds for backend to restart..."
+            sleep 30
+            
+            # Verify again
+            UPDATED_FRONTEND_URL=$(az containerapp show \
+              --name "$BACKEND_APP" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "properties.template.containers[0].env[?name=='FRONTEND_URL'].value" -o tsv)
+            
+            echo "Updated FRONTEND_URL: ${UPDATED_FRONTEND_URL}"
+            
+            if [ "$UPDATED_FRONTEND_URL" != "https://${FRONTEND_FQDN}" ]; then
+              echo "❌ FAILED: Could not update FRONTEND_URL!"
+              exit 1
+            fi
+          fi
+          
+          echo ""
+          echo "✅ CORS Configuration Verified:"
+          echo "   Backend will accept requests from: https://${FRONTEND_FQDN}"
+          echo "   CORS policy 'AllowFrontend' will be active"
+          echo ""
+          echo "📋 All Backend Environment Variables:"
+          echo "$ENV_VARS" | jq -r '.[] | select(.secretRef == null) | "   - \(.name) = \(.value)"'
+          echo ""
+          echo "🔐 Secret References:"
+          echo "$ENV_VARS" | jq -r '.[] | select(.secretRef != null) | "   - \(.name) → \(.secretRef)"'
+
       - name: Display final configuration
         run: |
           echo ""
