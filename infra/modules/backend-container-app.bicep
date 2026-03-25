@@ -22,6 +22,9 @@ param googleDriveRootFolderId string
 @description('Frontend URL for CORS')
 param frontendUrl string = ''
 
+@description('Enable email sending')
+param emailEnabled bool = true
+
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -67,6 +70,11 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         {
           name: 'google-drive-credentials'
           keyVaultUrl: '${keyVaultUri}secrets/GoogleDriveCredentials'
+          identity: 'system'
+        }
+        {
+          name: 'email-api-key'
+          keyVaultUrl: '${keyVaultUri}secrets/EmailApiKey'
           identity: 'system'
         }
       ]
@@ -168,6 +176,22 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'Jwt__ExpirationInMinutes'
               value: '60'
+            }
+            {
+              name: 'Email__Enabled'
+              value: string(emailEnabled)
+            }
+            {
+              name: 'Email__ApiKey'
+              secretRef: 'email-api-key'
+            }
+            {
+              name: 'Email__SenderEmail'
+              value: 'onboarding@resend.dev'
+            }
+            {
+              name: 'Email__SenderName'
+              value: 'Photos Market'
             }
           ]
         }

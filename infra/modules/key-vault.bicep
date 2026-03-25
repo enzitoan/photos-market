@@ -23,6 +23,10 @@ param cosmosDbAccountName string
 @secure()
 param googleDriveCredentials string
 
+@description('Email Service API Key (Resend)')
+@secure()
+param emailApiKey string
+
 // Reference to existing CosmosDB account
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-05-15' existing = {
   name: cosmosDbAccountName
@@ -82,6 +86,14 @@ resource googleDriveCredentialsSecret 'Microsoft.KeyVault/vaults/secrets@2023-07
   name: 'GoogleDriveCredentials'
   properties: {
     value: googleDriveCredentials
+  }
+}
+
+resource emailApiKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'EmailApiKey'
+  properties: {
+    value: emailApiKey
   }
 }
 

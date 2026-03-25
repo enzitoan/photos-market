@@ -54,6 +54,13 @@ param jwtSecretKey string
 @secure()
 param googleDriveCredentials string
 
+@description('Email Service API Key (Resend)')
+@secure()
+param emailApiKey string
+
+@description('Enable email sending')
+param emailEnabled bool = true
+
 // Container Registry
 module containerRegistry 'modules/container-registry.bicep' = {
   name: 'containerRegistry'
@@ -93,6 +100,7 @@ module keyVault 'modules/key-vault.bicep' = {
     jwtSecretKey: jwtSecretKey
     cosmosDbAccountName: cosmosDbAccountName
     googleDriveCredentials: googleDriveCredentials
+    emailApiKey: emailApiKey
   }
   dependsOn: [
     cosmosDb
@@ -140,6 +148,7 @@ module backendApp 'modules/backend-container-app.bicep' = {
     keyVaultUri: keyVault.outputs.uri
     googleDriveRootFolderId: googleDriveRootFolderId
     frontendUrl: 'https://${frontendApp.outputs.fqdn}'
+    emailEnabled: emailEnabled
   }
   dependsOn: [
     containerRegistry

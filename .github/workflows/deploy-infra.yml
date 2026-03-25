@@ -29,6 +29,11 @@ on:
         required: false
         type: boolean
         default: true
+      email_enabled:
+        description: 'Enable email sending'
+        required: false
+        type: boolean
+        default: true
 
 env:
   AZURE_RESOURCE_GROUP: rg-photosmarket-dev
@@ -67,6 +72,10 @@ jobs:
           
           if [ -z "${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}" ]; then
             MISSING_SECRETS+=("GOOGLE_DRIVE_CREDENTIALS")
+          fi
+          
+          if [ -z "${{ secrets.EMAIL_API_KEY }}" ]; then
+            MISSING_SECRETS+=("EMAIL_API_KEY")
           fi
           
           if [ ${#MISSING_SECRETS[@]} -gt 0 ]; then
@@ -126,12 +135,14 @@ jobs:
           export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
           export GOOGLE_DRIVE_ROOT_FOLDER_ID="${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}"
           export GOOGLE_DRIVE_CREDENTIALS="${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}"
+          export EMAIL_API_KEY="${{ secrets.EMAIL_API_KEY }}"
           
           az deployment group validate \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --template-file ./infra/main.bicep \
             --parameters ./infra/main.bicepparam \
-            --parameters environmentName=${{ github.event.inputs.environment || 'dev' }}
+            --parameters environmentName=${{ github.event.inputs.environment || 'dev' }} \
+            --parameters emailEnabled=${{ github.event.inputs.email_enabled || 'true' }}
           
           echo "✅ Bicep template validation successful"
 
@@ -146,12 +157,14 @@ jobs:
           export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
           export GOOGLE_DRIVE_ROOT_FOLDER_ID="${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}"
           export GOOGLE_DRIVE_CREDENTIALS="${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}"
+          export EMAIL_API_KEY="${{ secrets.EMAIL_API_KEY }}"
           
           az deployment group create \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
             --template-file ./infra/main.bicep \
             --parameters ./infra/main.bicepparam \
             --parameters environmentName=${{ github.event.inputs.environment || 'dev' }} \
+            --parameters emailEnabled=${{ github.event.inputs.email_enabled || 'true' }} \
             --name "infra-deployment-$(date +%Y%m%d-%H%M%S)"
           
           echo "✅ Infrastructure deployment completed"
