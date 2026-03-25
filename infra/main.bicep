@@ -170,7 +170,7 @@ resource existingContainerRegistry 'Microsoft.ContainerRegistry/registries@2023-
 
 // Assign Key Vault Secrets User role to Backend Container App
 resource backendKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(existingKeyVault.id, '${appName}-backend', 'Key Vault Secrets User')
+  name: guid(subscription().subscriptionId, resourceGroup().id, keyVaultName, '${appName}-backend-${environmentName}', '4633458b-17de-408a-b874-0445c86b69e6')
   scope: existingKeyVault
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6') // Key Vault Secrets User
@@ -181,7 +181,7 @@ resource backendKeyVaultRoleAssignment 'Microsoft.Authorization/roleAssignments@
 
 // Assign ACR Pull role to Backend Container App
 resource backendAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(existingContainerRegistry.id, '${appName}-backend', 'AcrPull')
+  name: guid(subscription().subscriptionId, resourceGroup().id, containerRegistryName, '${appName}-backend-${environmentName}', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
   scope: existingContainerRegistry
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
@@ -192,7 +192,7 @@ resource backendAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2
 
 // Assign ACR Pull role to Frontend Container App
 resource frontendAcrPullRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(existingContainerRegistry.id, '${appName}-frontend-${environmentName}', 'AcrPull')
+  name: guid(subscription().subscriptionId, resourceGroup().id, containerRegistryName, '${appName}-frontend-${environmentName}', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
   scope: existingContainerRegistry
   properties: {
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d') // AcrPull
