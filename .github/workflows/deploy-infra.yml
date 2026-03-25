@@ -152,29 +152,69 @@ jobs:
         run: |
           echo "🧹 Cleaning up existing role assignments to prevent conflicts..."
           
-          # Get Container Apps to find their principal IDs
-          BACKEND_APP="photosmarket-backend-${{ github.event.inputs.environment || 'dev' }}"
-          FRONTEND_APP="photosmarket-frontend-${{ github.event.inputs.environment || 'dev' }}"
+          # Get current subscription ID
+          SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          echo "Subscription ID: $SUBSCRIPTION_ID"
           
-          # Get principal IDs
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          BACKEND_APP="photosmarket-backend-${ENV}"
+          FRONTEND_APP="photosmarket-frontend-${ENV}"
+          KEY_VAULT_NAME="photosmarket-kv-${ENV}"
+          ACR_NAME="photosmarketacr${ENV}"
+          
+          # Get principal IDs if apps exist
           BACKEND_PRINCIPAL=$(az containerapp show --name "$BACKEND_APP" --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query identity.principalId -o tsv 2>/dev/null || echo "")
           FRONTEND_PRINCIPAL=$(az containerapp show --name "$FRONTEND_APP" --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query identity.principalId -o tsv 2>/dev/null || echo "")
           
-          echo "Backend Principal ID: $BACKEND_PRINCIPAL"
-          echo "Frontend Principal ID: $FRONTEND_PRINCIPAL"
+          echo "Backend Principal ID: ${BACKEND_PRINCIPAL:-Not found}"
+          echo "Frontend Principal ID: ${FRONTEND_PRINCIPAL:-Not found}"
           
-          # Delete ALL role assignments for these principals across all scopes
+          # Delete role assignments at resource scopes to avoid conflicts
+          # This handles the specific role assignments created by the Bicep template
+          
           if [ ! -z "$BACKEND_PRINCIPAL" ]; then
-            echo "Deleting all role assignments for backend app..."
-            az role assignment delete --assignee "$BACKEND_PRINCIPAL" --yes 2>/dev/null || echo "No assignments found for backend"
+            echo "Deleting backend app role assignments..."
+            
+            # Delete Key Vault role assignment
+            az role assignment delete \
+              --assignee "$BACKEND_PRINCIPAL" \
+              --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${{ env.AZURE_RESOURCE_GROUP }}/providers/Microsoft.KeyVault/vaults/${KEY_VAULT_NAME}" \
+              --role "Key Vault Secrets User" \
+              --yes 2>/dev/null || echo "  No Key Vault assignment for backend"
+            
+            # Delete ACR Pull role assignment
+            az role assignment delete \
+              --assignee "$BACKEND_PRINCIPAL" \
+              --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${{ env.AZURE_RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${ACR_NAME}" \
+              --role "AcrPull" \
+              --yes 2>/dev/null || echo "  No ACR assignment for backend"
           fi
           
           if [ ! -z "$FRONTEND_PRINCIPAL" ]; then
-            echo "Deleting all role assignments for frontend app..."
-            az role assignment delete --assignee "$FRONTEND_PRINCIPAL" --yes 2>/dev/null || echo "No assignments found for frontend"
+            echo "Deleting frontend app role assignments..."
+            
+            # Delete ACR Pull role assignment
+            az role assignment delete \
+              --assignee "$FRONTEND_PRINCIPAL" \
+              --scope "/subscriptions/${SUBSCRIPTION_ID}/resourceGroups/${{ env.AZURE_RESOURCE_GROUP }}/providers/Microsoft.ContainerRegistry/registries/${ACR_NAME}" \
+              --role "AcrPull" \
+              --yes 2>/dev/null || echo "  No ACR assignment for frontend"
           fi
           
           echo "✅ Cleanup completed"
+
+      - name: Wait for role assignment cleanup to propagate
+        if: github.event.inputs.validation_only != 'true'
+        run: |
+          echo "⏳ Waiting for role assignment cleanup to propagate..."
+          
+          # Give Azure time to propagate the role assignment deletions
+          # This prevents conflicts when Bicep tries to create new role assignments
+          WAIT_TIME=30
+          echo "Waiting ${WAIT_TIME} seconds for Azure RBAC changes to propagate..."
+          sleep $WAIT_TIME
+          
+          echo "✅ Role assignment cleanup should be propagated"
 
       - name: Deploy Bicep infrastructure
         if: github.event.inputs.validation_only != 'true'
@@ -197,6 +237,61 @@ jobs:
             --name "infra-deployment-$(date +%Y%m%d-%H%M%S)"
           
           echo "✅ Infrastructure deployment completed"
+
+      - name: Wait for Container Apps to be ready
+        if: github.event.inputs.validation_only != 'true'
+        run: |
+          echo "⏳ Waiting for Container Apps to be fully provisioned and running..."
+          
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          BACKEND_APP="photosmarket-backend-${ENV}"
+          FRONTEND_APP="photosmarket-frontend-${ENV}"
+          
+          MAX_WAIT=300  # 5 minutes maximum
+          INTERVAL=10   # Check every 10 seconds
+          ELAPSED=0
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            echo "Checking app status... ($ELAPSED/$MAX_WAIT seconds)"
+            
+            # Check backend status
+            BACKEND_STATUS=$(az containerapp show \
+              --name "$BACKEND_APP" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "properties.runningStatus" -o tsv 2>/dev/null || echo "NotFound")
+            
+            # Check frontend status
+            FRONTEND_STATUS=$(az containerapp show \
+              --name "$FRONTEND_APP" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "properties.runningStatus" -o tsv 2>/dev/null || echo "NotFound")
+            
+            echo "  Backend: $BACKEND_STATUS"
+            echo "  Frontend: $FRONTEND_STATUS"
+            
+            # Check if both are running
+            if [ "$BACKEND_STATUS" = "Running" ] && [ "$FRONTEND_STATUS" = "Running" ]; then
+              echo "✅ Both Container Apps are running!"
+              break
+            fi
+            
+            # Wait before next check
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          
+          # Final status check
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "⚠️  WARNING: Timeout waiting for apps to be ready"
+            echo "   Backend: $BACKEND_STATUS"
+            echo "   Frontend: $FRONTEND_STATUS"
+            echo "   Continuing anyway, but configuration may not be complete"
+          fi
+          
+          # Additional wait to ensure environment variables are fully applied
+          echo "Waiting additional 15 seconds for environment variables to stabilize..."
+          sleep 15
+          echo "✅ Apps are ready for configuration verification"
 
       - name: Get deployment outputs
         if: github.event.inputs.validation_only != 'true'
@@ -381,6 +476,55 @@ jobs:
             --output none
           
           echo "✅ Backend updated: FRONTEND_URL=https://${FRONTEND_FQDN}"
+
+      - name: Wait for configuration updates to apply
+        run: |
+          echo "⏳ Waiting for Container Apps to apply configuration updates..."
+          
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          BACKEND_APP="photosmarket-backend-${ENV}"
+          FRONTEND_APP="photosmarket-frontend-${ENV}"
+          
+          MAX_WAIT=120  # 2 minutes maximum
+          INTERVAL=10   # Check every 10 seconds
+          ELAPSED=0
+          
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            echo "Checking app status... ($ELAPSED/$MAX_WAIT seconds)"
+            
+            # Check backend status
+            BACKEND_STATUS=$(az containerapp show \
+              --name "$BACKEND_APP" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "properties.runningStatus" -o tsv 2>/dev/null || echo "Unknown")
+            
+            # Check frontend status
+            FRONTEND_STATUS=$(az containerapp show \
+              --name "$FRONTEND_APP" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --query "properties.runningStatus" -o tsv 2>/dev/null || echo "Unknown")
+            
+            echo "  Backend: $BACKEND_STATUS"
+            echo "  Frontend: $FRONTEND_STATUS"
+            
+            # Check if both are running
+            if [ "$BACKEND_STATUS" = "Running" ] && [ "$FRONTEND_STATUS" = "Running" ]; then
+              echo "✅ Both Container Apps are running with updated configuration!"
+              break
+            fi
+            
+            # Wait before next check
+            sleep $INTERVAL
+            ELAPSED=$((ELAPSED + INTERVAL))
+          done
+          
+          # Final verification
+          if [ $ELAPSED -ge $MAX_WAIT ]; then
+            echo "⚠️  WARNING: Timeout waiting for apps to stabilize"
+            echo "   Apps may still be restarting with new configuration"
+          fi
+          
+          echo "✅ Configuration updates have been applied"
 
       - name: Display final configuration
         run: |
