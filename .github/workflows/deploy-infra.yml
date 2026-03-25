@@ -152,23 +152,28 @@ jobs:
         run: |
           echo "🧹 Cleaning up existing role assignments to prevent conflicts..."
           
-          # Delete the specific existing role assignments by their exact IDs
-          # These are the old assignments that are causing conflicts
-          ROLE_ASSIGNMENT_IDS=(
-            "77f26d20b66446df9110c8b325822725"
-            "2d6c1b8c5cd84b5cb206fb0b95f2d216"
-            "b53afeb293a04e55b06dc6c9c6f42b00"
-          )
+          # Get Container Apps to find their principal IDs
+          BACKEND_APP="photosmarket-backend-${{ github.event.inputs.environment || 'dev' }}"
+          FRONTEND_APP="photosmarket-frontend-${{ github.event.inputs.environment || 'dev' }}"
           
-          for ASSIGNMENT_ID in "${ROLE_ASSIGNMENT_IDS[@]}"; do
-            echo "Attempting to delete role assignment: $ASSIGNMENT_ID"
-            az role assignment delete \
-              --ids "/subscriptions/064b3ccb-8d7c-422a-b083-a72dd5afc342/resourceGroups/${{ env.AZURE_RESOURCE_GROUP }}/providers/Microsoft.Authorization/roleAssignments/$ASSIGNMENT_ID" \
-              2>/dev/null && echo "✓ Deleted $ASSIGNMENT_ID" || echo "✗ Assignment $ASSIGNMENT_ID not found or already deleted"
-          done
+          # Get principal IDs
+          BACKEND_PRINCIPAL=$(az containerapp show --name "$BACKEND_APP" --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query identity.principalId -o tsv 2>/dev/null || echo "")
+          FRONTEND_PRINCIPAL=$(az containerapp show --name "$FRONTEND_APP" --resource-group ${{ env.AZURE_RESOURCE_GROUP }} --query identity.principalId -o tsv 2>/dev/null || echo "")
           
-          echo "✅ Cleanup completed"
-
+          echo "Backend Principal ID: $BACKEND_PRINCIPAL"
+          echo "Frontend Principal ID: $FRONTEND_PRINCIPAL"
+          
+          # Delete ALL role assignments for these principals across all scopes
+          if [ ! -z "$BACKEND_PRINCIPAL" ]; then
+            echo "Deleting all role assignments for backend app..."
+            az role assignment delete --assignee "$BACKEND_PRINCIPAL" --yes 2>/dev/null || echo "No assignments found for backend"
+          fi
+          
+          if [ ! -z "$FRONTEND_PRINCIPAL" ]; then
+            echo "Deleting all role assignments for frontend app..."
+            az role assignment delete --assignee "$FRONTEND_PRINCIPAL" --yes 2>/dev/null || echo "No assignments found for frontend"
+          fi
+          
           echo "✅ Cleanup completed"
 
       - name: Deploy Bicep infrastructure
