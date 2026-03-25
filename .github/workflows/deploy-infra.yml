@@ -43,6 +43,8 @@ jobs:
   validate-secrets:
     name: Validate Required Secrets
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'dev' }}
     steps:
       - name: Validate secrets are configured
         run: |
