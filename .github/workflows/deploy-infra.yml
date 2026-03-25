@@ -147,6 +147,49 @@ jobs:
           
           echo "✅ Bicep template validation successful"
 
+      - name: Clean up existing role assignments
+        if: github.event.inputs.validation_only != 'true'
+        run: |
+          echo "🧹 Cleaning up existing role assignments to prevent conflicts..."
+          
+          # Get Container Apps managed identities
+          BACKEND_APP_NAME="photosmarket-backend-${{ github.event.inputs.environment || 'dev' }}"
+          FRONTEND_APP_NAME="photosmarket-frontend-${{ github.event.inputs.environment || 'dev' }}"
+          
+          # Delete existing role assignments for backend app (if exists)
+          BACKEND_PRINCIPAL_ID=$(az containerapp show \
+            --name "$BACKEND_APP_NAME" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query identity.principalId -o tsv 2>/dev/null || echo "")
+          
+          if [ ! -z "$BACKEND_PRINCIPAL_ID" ]; then
+            echo "Found backend app principal ID: $BACKEND_PRINCIPAL_ID"
+            az role assignment delete \
+              --assignee "$BACKEND_PRINCIPAL_ID" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --yes 2>/dev/null || echo "No existing role assignments for backend app"
+          else
+            echo "Backend app not found or has no managed identity yet"
+          fi
+          
+          # Delete existing role assignments for frontend app (if exists)
+          FRONTEND_PRINCIPAL_ID=$(az containerapp show \
+            --name "$FRONTEND_APP_NAME" \
+            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+            --query identity.principalId -o tsv 2>/dev/null || echo "")
+          
+          if [ ! -z "$FRONTEND_PRINCIPAL_ID" ]; then
+            echo "Found frontend app principal ID: $FRONTEND_PRINCIPAL_ID"
+            az role assignment delete \
+              --assignee "$FRONTEND_PRINCIPAL_ID" \
+              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+              --yes 2>/dev/null || echo "No existing role assignments for frontend app"
+          else
+            echo "Frontend app not found or has no managed identity yet"
+          fi
+          
+          echo "✅ Cleanup completed"
+
       - name: Deploy Bicep infrastructure
         if: github.event.inputs.validation_only != 'true'
         env:
