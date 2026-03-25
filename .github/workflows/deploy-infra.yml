@@ -152,42 +152,23 @@ jobs:
         run: |
           echo "🧹 Cleaning up existing role assignments to prevent conflicts..."
           
-          # Get Container Apps managed identities
-          BACKEND_APP_NAME="photosmarket-backend-${{ github.event.inputs.environment || 'dev' }}"
-          FRONTEND_APP_NAME="photosmarket-frontend-${{ github.event.inputs.environment || 'dev' }}"
+          # Delete the specific existing role assignments by their exact IDs
+          # These are the old assignments that are causing conflicts
+          ROLE_ASSIGNMENT_IDS=(
+            "77f26d20b66446df9110c8b325822725"
+            "2d6c1b8c5cd84b5cb206fb0b95f2d216"
+            "b53afeb293a04e55b06dc6c9c6f42b00"
+          )
           
-          # Delete existing role assignments for backend app (if exists)
-          BACKEND_PRINCIPAL_ID=$(az containerapp show \
-            --name "$BACKEND_APP_NAME" \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query identity.principalId -o tsv 2>/dev/null || echo "")
-          
-          if [ ! -z "$BACKEND_PRINCIPAL_ID" ]; then
-            echo "Found backend app principal ID: $BACKEND_PRINCIPAL_ID"
+          for ASSIGNMENT_ID in "${ROLE_ASSIGNMENT_IDS[@]}"; do
+            echo "Attempting to delete role assignment: $ASSIGNMENT_ID"
             az role assignment delete \
-              --assignee "$BACKEND_PRINCIPAL_ID" \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --yes 2>/dev/null || echo "No existing role assignments for backend app"
-          else
-            echo "Backend app not found or has no managed identity yet"
-          fi
+              --ids "/subscriptions/064b3ccb-8d7c-422a-b083-a72dd5afc342/resourceGroups/${{ env.AZURE_RESOURCE_GROUP }}/providers/Microsoft.Authorization/roleAssignments/$ASSIGNMENT_ID" \
+              2>/dev/null && echo "✓ Deleted $ASSIGNMENT_ID" || echo "✗ Assignment $ASSIGNMENT_ID not found or already deleted"
+          done
           
-          # Delete existing role assignments for frontend app (if exists)
-          FRONTEND_PRINCIPAL_ID=$(az containerapp show \
-            --name "$FRONTEND_APP_NAME" \
-            --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-            --query identity.principalId -o tsv 2>/dev/null || echo "")
-          
-          if [ ! -z "$FRONTEND_PRINCIPAL_ID" ]; then
-            echo "Found frontend app principal ID: $FRONTEND_PRINCIPAL_ID"
-            az role assignment delete \
-              --assignee "$FRONTEND_PRINCIPAL_ID" \
-              --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-              --yes 2>/dev/null || echo "No existing role assignments for frontend app"
-          else
-            echo "Frontend app not found or has no managed identity yet"
-          fi
-          
+          echo "✅ Cleanup completed"
+
           echo "✅ Cleanup completed"
 
       - name: Deploy Bicep infrastructure
