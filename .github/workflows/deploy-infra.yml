@@ -128,16 +128,15 @@ jobs:
           echo "✅ Resource Group: ${{ env.AZURE_RESOURCE_GROUP }}"
 
       - name: Validate Bicep template
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
+          GOOGLE_DRIVE_CREDENTIALS: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
+          EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
         run: |
           echo "🔍 Validating Bicep template..."
-          
-          # Export environment variables for bicepparam
-          export GOOGLE_OAUTH_CLIENT_ID="${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}"
-          export GOOGLE_OAUTH_CLIENT_SECRET="${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}"
-          export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
-          export GOOGLE_DRIVE_ROOT_FOLDER_ID="${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}"
-          export GOOGLE_DRIVE_CREDENTIALS="${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}"
-          export EMAIL_API_KEY="${{ secrets.EMAIL_API_KEY }}"
           
           az deployment group validate \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
@@ -150,16 +149,15 @@ jobs:
 
       - name: Deploy Bicep infrastructure
         if: github.event.inputs.validation_only != 'true'
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          JWT_SECRET_KEY: ${{ secrets.JWT_SECRET_KEY }}
+          GOOGLE_DRIVE_ROOT_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}
+          GOOGLE_DRIVE_CREDENTIALS: ${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}
+          EMAIL_API_KEY: ${{ secrets.EMAIL_API_KEY }}
         run: |
           echo "🚀 Deploying infrastructure..."
-          
-          # Export environment variables for bicepparam
-          export GOOGLE_OAUTH_CLIENT_ID="${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}"
-          export GOOGLE_OAUTH_CLIENT_SECRET="${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}"
-          export JWT_SECRET_KEY="${{ secrets.JWT_SECRET_KEY }}"
-          export GOOGLE_DRIVE_ROOT_FOLDER_ID="${{ secrets.GOOGLE_DRIVE_ROOT_FOLDER_ID }}"
-          export GOOGLE_DRIVE_CREDENTIALS="${{ secrets.GOOGLE_DRIVE_CREDENTIALS }}"
-          export EMAIL_API_KEY="${{ secrets.EMAIL_API_KEY }}"
           
           az deployment group create \
             --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
