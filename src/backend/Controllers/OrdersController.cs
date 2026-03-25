@@ -111,7 +111,9 @@ public class OrdersController : ControllerBase
                 CreatedAt = order.CreatedAt,
                 PaidAt = order.PaidAt,
                 PaymentReference = order.PaymentReference
-            }).ToList();
+            })
+            .OrderByDescending(o => o.CreatedAt)
+            .ToList();
 
             return Ok(new ApiResponse<List<OrderDto>>
             {

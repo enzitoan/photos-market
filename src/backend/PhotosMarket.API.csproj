@@ -14,9 +14,9 @@
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.38.1" />
     <PackageReference Include="Google.Apis.Auth" Version="1.68.0" />
     <PackageReference Include="Google.Apis.Drive.v3" Version="1.68.0.3421" />
+    <PackageReference Include="Resend" Version="0.2.2" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.3.1" />
-    <PackageReference Include="MailKit" Version="4.3.0" />
   </ItemGroup>
 
 </Project>

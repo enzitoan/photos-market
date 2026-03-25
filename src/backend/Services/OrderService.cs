@@ -92,14 +92,14 @@ public class OrderService : IOrderService
 
         order = await _orderRepository.CreateAsync(order);
 
-        // Send order confirmation email (non-blocking)
+        // Send awaiting payment email (non-blocking)
         try
         {
-            await _emailService.SendOrderConfirmationEmailAsync(order, userEmail);
+            await _emailService.SendOrderAwaitingPaymentEmailAsync(order, userEmail);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to send order confirmation email for order {OrderId}. Order was created successfully.", order.Id);
+            _logger.LogWarning(ex, "Failed to send awaiting payment email for order {OrderId}. Order was created successfully.", order.Id);
             // Continue - don't fail order creation if email fails
         }
 
@@ -159,15 +159,14 @@ public class OrderService : IOrderService
         orderToComplete.ProcessedAt = DateTime.UtcNow;
         orderToComplete = await _orderRepository.UpdateAsync(orderToComplete);
 
-        // Send download link email (non-blocking)
-        var downloadUrl = $"{_appSettings.FrontendUrl}/download/{downloadLink.Token}";
+        // Send order completed email (non-blocking)
         try
         {
-            await _emailService.SendDownloadLinkEmailAsync(orderToComplete.UserEmail, downloadUrl, downloadLink.ExpiresAt);
+            await _emailService.SendOrderCompletedEmailAsync(orderToComplete, orderToComplete.UserEmail);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to send download link email for order {OrderId}. Download link was created successfully.", orderToComplete.Id);
+            _logger.LogWarning(ex, "Failed to send order completed email for order {OrderId}. Order was completed successfully.", orderToComplete.Id);
             // Continue - don't fail completion if email fails
         }
 

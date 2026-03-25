@@ -60,6 +60,23 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"))
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.Configure<ApplicationSettings>(builder.Configuration.GetSection("Application"));
 
+// Configure Resend for email sending
+var emailSettings = builder.Configuration.GetSection("Email").Get<EmailSettings>();
+builder.Services.Configure<Resend.ResendClientOptions>(options =>
+{
+    options.ApiToken = emailSettings?.ApiKey ?? "re_dummy_key";
+});
+builder.Services.AddHttpClient<Resend.IResend, Resend.ResendClient>();
+
+if (emailSettings?.Enabled == true && !string.IsNullOrEmpty(emailSettings.ApiKey))
+{
+    Console.WriteLine("✅ Resend email service configured");
+}
+else
+{
+    Console.WriteLine("⚠️  Email service is disabled or not configured");
+}
+
 // Try to connect to Cosmos DB, fallback to in-memory if not available
 var cosmosConnectionString = builder.Configuration.GetConnectionString("CosmosDb");
 
