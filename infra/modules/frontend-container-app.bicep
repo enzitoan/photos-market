@@ -34,7 +34,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       registries: [
         {
           server: '${containerRegistryName}.azurecr.io'
-          identity: 'system'
+          username: listCredentials(resourceId('Microsoft.ContainerRegistry/registries', containerRegistryName), '2023-07-01').username
+          passwordSecretRef: 'acr-password'
+        }
+      ]
+      secrets: [
+        {
+          name: 'acr-password'
+          value: listCredentials(resourceId('Microsoft.ContainerRegistry/registries', containerRegistryName), '2023-07-01').passwords[0].value
         }
       ]
     }
