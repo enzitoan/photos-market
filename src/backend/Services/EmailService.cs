@@ -136,8 +136,7 @@ public class EmailService : IEmailService
                     </div>
 
                     <p style='color: #666; font-size: 14px;'>
-                        Tus fotografías han sido procesadas. Para acceder a ellas, 
-                        dirígete a la sección de órdenes en tu cuenta.
+                        Tus fotografías han sido procesadas y enviadas a tu correo electrónico registrado. Revisa tu bandeja de entrada (y la carpeta de spam por si acaso) para acceder a tus archivos.
                     </p>
 
                     <p>Si tienes alguna pregunta o necesitas asistencia, no dudes en contactarnos.</p>
@@ -150,7 +149,7 @@ public class EmailService : IEmailService
         var message = new EmailMessage();
         message.From = _settings.SenderEmail;
         message.To.Add(userEmail);
-        message.Subject = $"Orden Completada #{order.Id.Substring(0, 8)} ✅";
+        message.Subject = $"[Photos Market] - Orden Completada #{order.Id.Substring(0, 8)} ✅";
         message.HtmlBody = htmlBody;
 
         try
