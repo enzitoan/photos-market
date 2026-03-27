@@ -501,25 +501,19 @@ Puertos permitidos por defecto:
 - Configurable en `Application.PhotoPricePerUnit`
 
 ### **Usuarios de Prueba**
-- **Admin**: `ahumada.enzo@gmail.com`
-- **Cliente**: `egan.fotografia.ph@gmail.com`
+- **Admin**: `egan.fotografia.ph@gmail.com`
+- **Cliente**: `ahumada.enzo@gmail.com`
 
 ## 🔜 Roadmap / Mejoras Futuras
 
-- [ ] **Registrar Usuarios** - Solicitar Rut y Fecha de Nacimiento en el primer login, guardar nombre y email de contacto.
-- [ ] **Email de Confirmación** - Enviar email automático al crear pedido con instrucciones de pago.
-- [x] **Sistema de Cupones** - Descuentos y promociones ✅ **IMPLEMENTADO**: Descuento del 20% desde 5 fotos
-- [ ] **Enlace de Descarga por Email** - Enviar enlace de descarga automático al confirmar pago.
-- [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago
-- [ ] **Marca de Agua Server-Side** - Usar ImageSharp para mayor seguridad
-- [ ] **Panel de Analytics** - Reportes de ventas y estadísticas
-- [ ] **Notificaciones Push** - Websockets o Server-Sent Events
-- [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3
-- [ ] **Testing** - Tests unitarios e integración
-- [ ] **Cache Redis** - Mejorar performance
-- [ ] **Compresión de Imágenes** - Optimización automática
-- [ ] **Búsqueda Avanzada** - Por metadatos, geolocalización, fechas
-- [ ] **PWA** - Aplicación web progresiva
+- [ ] **Enlace de Descarga por Email** - Enviar enlace de descarga con las fotos de la orden de forma automática al confirmar el pago.
+- [ ] **Compresión de Imágenes** - Optimización automática.
+- [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
+- [ ] **Marca de Agua Server-Side** - Usar ImageSharp para mayor seguridad.
+- [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.
+- [ ] **Testing** - Tests unitarios e integración.
+- [ ] **Cache Redis** - Mejorar performance.
+- [ ] **Búsqueda Avanzada** - Por metadatos, geolocalización, fechas.
 - [ ] **Multi-idioma** - i18n (Español/Inglés)
 
 ## 📖 Documentación Adicional
