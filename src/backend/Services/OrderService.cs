@@ -137,6 +137,17 @@ public class OrderService : IOrderService
 
         order = await _orderRepository.UpdateAsync(order);
 
+        // Send payment confirmed email (non-blocking)
+        try
+        {
+            await _emailService.SendPaymentConfirmedEmailAsync(order, order.UserEmail);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to send payment confirmed email for order {OrderId}. Order was updated successfully.", order.Id);
+            // Continue - don't fail payment confirmation if email fails
+        }
+
         return order;
     }
 
@@ -151,22 +162,40 @@ public class OrderService : IOrderService
         if (orderToComplete.Status != OrderStatus.Processing)
             throw new InvalidOperationException("Order must be in Processing status to be completed");
 
-        // Generate download link
-        var downloadLink = await GenerateDownloadLinkAsync(orderToComplete);
+        // Generate download link when order is completed
+        DownloadLink downloadLink;
+        try
+        {
+            // Check if a link already exists
+            downloadLink = await _downloadLinkRepository.GetByOrderIdAsync(orderToComplete.Id, orderToComplete.UserId);
+            
+            // If no link exists or expired, generate a new one
+            if (downloadLink == null || downloadLink.IsExpired)
+            {
+                _logger.LogInformation("No valid download link found for order {OrderId}, generating new one", orderToComplete.Id);
+                downloadLink = await GenerateDownloadLinkAsync(orderToComplete);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate download link for order {OrderId}", orderToComplete.Id);
+            throw new InvalidOperationException("Failed to generate download link", ex);
+        }
 
         // Update order status to completed
         orderToComplete.Status = OrderStatus.Completed;
         orderToComplete.ProcessedAt = DateTime.UtcNow;
         orderToComplete = await _orderRepository.UpdateAsync(orderToComplete);
 
-        // Send order completed email (non-blocking)
+        // Send payment confirmed email with download link (non-blocking)
         try
         {
-            await _emailService.SendOrderCompletedEmailAsync(orderToComplete, orderToComplete.UserEmail);
+            await _emailService.SendPaymentConfirmedWithDownloadLinkAsync(orderToComplete, downloadLink, orderToComplete.UserEmail);
+            _logger.LogInformation("Payment confirmed email with download link sent for order {OrderId}", orderToComplete.Id);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to send order completed email for order {OrderId}. Order was completed successfully.", orderToComplete.Id);
+            _logger.LogWarning(ex, "Failed to send payment confirmed email for order {OrderId}. Order was completed successfully.", orderToComplete.Id);
             // Continue - don't fail completion if email fails
         }
 

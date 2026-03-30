@@ -136,7 +136,18 @@ public class DownloadLinkDto
     public string Token { get; set; } = string.Empty;
     public string DownloadUrl { get; set; } = string.Empty;
     public DateTime ExpiresAt { get; set; }
-    public bool IsExpired { get; set; }
+    public bool IsExpired { get; set; }    public string OrderNumber { get; set; } = string.Empty;
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerEmail { get; set; } = string.Empty;
+    public List<string> PhotoIds { get; set; } = new();
+    public List<DownloadPhotoDto> Photos { get; set; } = new();
+}
+
+public class DownloadPhotoDto
+{
+    public string PhotoId { get; set; } = string.Empty;
+    public string Filename { get; set; } = string.Empty;
+    public string ThumbnailUrl { get; set; } = string.Empty;
 }
 
 // Public Configuration DTOs

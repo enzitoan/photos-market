@@ -7,11 +7,12 @@ Aplicación web completa que permite a los clientes comprar fotografías de alta
 ✨ **Para Clientes:**
 - 🔐 Autenticación segura con Google OAuth 2.0
 - 📁 Navegación por álbumes del fotógrafo
-- 🖼️ Visualización de miniaturas con marca de agua
+- 🖼️ Visualización de miniaturas con marca de agua (overlay CSS)
 - 🛒 Carrito de compras para seleccionar múltiples fotos
-- � Sistema de descuentos automáticos (20% desde 5 fotos)
-- �📋 Proceso de pedido mediante transferencia electrónica
-- 📥 Descarga de fotos en alta resolución tras confirmar el pago
+- 💰 Sistema de descuentos automáticos (20% desde 5 fotos)
+- 📧 Emails automáticos: confirmación de pedido, pago confirmado y enlace de descarga
+- 📋 Proceso de pedido mediante transferencia electrónica
+- 📥 Descarga de fotos originales en alta resolución vía backend proxy autenticado
 - ⏰ Enlaces de descarga con vigencia de 72 horas
 - 📱 Interfaz moderna y responsiva
 
@@ -19,15 +20,16 @@ Aplicación web completa que permite a los clientes comprar fotografías de alta
 - 📊 Panel de administración completo
 - 📦 Gestión de álbumes (bloquear/desbloquear)
 - 💰 Gestión de pedidos y confirmación de pagos
-- 🔗 Generación de enlaces de descarga
-- ⚙️ Configuración del sistema
+- � Sistema de emails automáticos en cada etapa del pedido
+- 🔗 Generación automática de enlaces de descarga con expiración
+- ⚙️ Configuración del sistema (precios, descuentos, emails)
 - 📈 Dashboard con estadísticas
 
 🔧 **Stack Tecnológico:**
 - **Backend**: .NET 8.0 Web API, Azure Cosmos DB, Google Drive API
 - **Frontend**: Vue 3, Vite, Pinia, Tailwind CSS, Vue Router
 - **Auth**: OAuth 2.0 + JWT
-- **Emails**: MailKit (SMTP)
+- **Emails**: Resend API con MailKit fallback
 - **Docs**: Swagger/OpenAPI
 
 ## 📁 Estructura del Proyecto
@@ -284,10 +286,10 @@ Para más detalles sobre la infraestructura, consulta:
 1. **Login** → Hace clic en "Continuar con Google" → Autoriza la app
 2. **Explora Álbumes** → Navega por álbumes disponibles
 3. **Selecciona Fotos** → Agrega fotos al carrito (miniaturas con marca de agua)
-4. **Crea Pedido** → Confirma el carrito y crea el pedido
+4. **Crea Pedido** → Confirma el carrito → Recibe email de confirmación
 5. **Realiza Pago** → Transfiere el monto indicado
-6. **Espera Confirmación** → El admin confirma el pago
-7. **Descarga** → Recibe enlace para descargar fotos en alta resolución (válido 72 horas)
+6. **Espera Confirmación** → El admin confirma el pago → Recibe email de pago confirmado
+7. **Descarga** → Recibe email con enlace de descarga → Descarga fotos originales en alta resolución desde backend proxy autenticado (válido 72 horas)
 
 ### **Administrador**
 
@@ -295,8 +297,8 @@ Para más detalles sobre la infraestructura, consulta:
 2. **Autentica Google Drive** → Conecta con Google Drive API
 3. **Gestiona Álbumes** → Bloquea/desbloquea álbumes según disponibilidad
 4. **Revisa Pedidos** → Ve todos los pedidos en el sistema
-5. **Confirma Pagos** → Valida transferencias recibidas y confirma en el sistema
-6. **Genera Enlaces** → Sistema genera enlaces de descarga automáticamente
+5. **Confirma Pagos** → Valida transferencias recibidas y confirma en el sistema → Sistema envía email de confirmación al cliente
+6. **Completa Orden** → Marca orden como completada → Sistema genera enlace y envía email con link de descarga
 7. **Monitorea** → Revisa estadísticas en el dashboard
 
 ## 🛠️ Stack Tecnológico Detallado
@@ -306,7 +308,7 @@ Para más detalles sobre la infraestructura, consulta:
 - **Azure Cosmos DB** - Base de datos NoSQL (con fallback a in-memory)
 - **Google.Apis.Drive.v3** - Integración con Google Drive API
 - **Microsoft.IdentityModel.Tokens** - Autenticación JWT
-- **MailKit** - Envío de emails SMTP
+- **Resend SDK** - Servicio de emails transaccionales con MailKit como fallback
 - **Swashbuckle (Swagger)** - Documentación OpenAPI
 
 ### **Frontend (Vue 3)**
@@ -322,7 +324,7 @@ Para más detalles sobre la infraestructura, consulta:
 ### **Infraestructura**
 - **Google Cloud Platform** - OAuth 2.0, Drive API
 - **Azure Cosmos DB** - Base de datos NoSQL
-- **Gmail SMTP** - Servidor de correo (opcional)
+- **Resend** - Servicio de emails transaccionales
 
 ## 📋 Configuración Principal
 
@@ -383,19 +385,28 @@ El archivo `src/backend/appsettings.json` contiene:
 }
 ```
 
-### **5. Email (Opcional)**
+### **5. Email**
 ```json
 {
   "Email": {
-    "Enabled": false,  // Cambiar a true para habilitar
+    "Enabled": true,  // Habilitar/deshabilitar sistema de emails
+    "Provider": "Resend", // "Resend" o "Smtp"
+    "SenderEmail": "onboarding@resend.dev",
+    "SenderName": "PhotosMarket",
+    
+    // Configuración Resend (recomendado)
+    "ResendApiKey": "re_tu_api_key_aqui",
+    
+    // Configuración SMTP alternativa (Gmail, etc.)
     "SmtpServer": "smtp.gmail.com",
     "SmtpPort": 587,
-    "SenderEmail": "tu-email@gmail.com",
     "SenderPassword": "tu-app-password",
     "EnableSsl": true
   }
 }
 ```
+
+**Nota**: El sistema usa Resend por defecto para emails transaccionales profesionales. SMTP está disponible como alternativa.
 
 ### **6. Aplicación**
 ```json
@@ -435,51 +446,90 @@ Ver `appsettings.template.json` como referencia completa.
 ## 📧 Sistema de Emails
 
 ### **Estado Actual**
-- Sistema **deshabilitado por defecto** (`Email.Enabled: false`)
-- Infraestructura completa implementada con MailKit
-- Plantillas de email listas para usar
+- Sistema **habilitado** con Resend API
+- Infraestructura completa implementada con Resend SDK y MailKit como fallback
+- 3 plantillas de email profesionales listas para usar
+- Emails automáticos en cada etapa del pedido
 
 ### **Emails Automáticos**
 
-1. **Confirmación de Pedido**
+El sistema envía 3 correos automáticos durante el ciclo de vida del pedido:
+
+1. **Confirmación de Pedido** (al crear orden)
    - Número de pedido
    - Lista de fotos seleccionadas
-   - Precio total
+   - Precio total y descuentos aplicados
    - Instrucciones de pago
+   - Estado: En Espera de Pago
 
-2. **Enlace de Descarga**
-   - URL con token único
-   - Fecha de expiración
+2. **Pago Confirmado** (al validar la transferencia)
+   - Confirmación de pago recibido
+   - Resumen del pedido
+   - Fecha y referencia de pago
+   - Aviso de que recibirá el enlace de descarga próximamente
+
+3. **Orden Completa con Enlace de Descarga** (al completar orden)
+   - URL con token único de descarga
+   - Fecha de expiración (72 horas)
    - Instrucciones de descarga
+   - Advertencia de vigencia del enlace
 
-### **Para Habilitar**
-En `appsettings.json`:
+### **Configuración**
+
+El sistema viene configurado con Resend API. Para usar tu propia cuenta:
+
+**Opción 1: Resend (Recomendado)**
+1. Crear cuenta en [Resend.com](https://resend.com)
+2. Obtener API Key desde el dashboard
+3. Configurar en `appsettings.json`:
 ```json
 "Email": {
   "Enabled": true,
-  "SenderEmail": "tu-email@gmail.com",
-  "SenderPassword": "tu-app-password-aqui"
+  "ResendApiKey": "re_tu_api_key",
+  "SenderEmail": "noreply@tu-dominio.com",
+  "SenderName": "PhotosMarket"
 }
 ```
 
-**Obtener App Password de Gmail:**
-1. Cuenta Google → Seguridad
-2. Verificación en 2 pasos (activar)
-3. Contraseñas de aplicaciones
-4. Generar nueva contraseña
+**Opción 2: SMTP / Gmail**
+1. Obtener App Password de Gmail:
+   - Cuenta Google → Seguridad
+   - Verificación en 2 pasos (activar)
+   - Contraseñas de aplicaciones → Generar
+2. Configurar en `appsettings.json`:
+```json
+"Email": {
+  "Enabled": true,
+  "Provider": "Smtp",
+  "SmtpServer": "smtp.gmail.com",
+  "SmtpPort": 587,
+  "SenderEmail": "tu-email@gmail.com",
+  "SenderPassword": "tu-app-password",
+  "EnableSsl": true
+}
+```
 
 ## 📝 Notas Importantes
 
 ### **Marcas de Agua**
-- Implementadas actualmente en el **cliente** mediante parámetros de URL de Google Drive
-- Miniaturas: `400x400px` con parámetros `=w400-h400`
+- **Vista previa (PhotoCard)**: Overlay CSS con marca de agua sobre miniaturas
+- **Vista de descarga**: Miniaturas sin marca de agua (fotos ya compradas)
+- Miniaturas: `400x400px` usando URLs de Google Drive con parámetro `=w400`
 - Para producción: considerar implementación en servidor con SixLabors.ImageSharp
 
+### **Sistema de Descarga**
+- **Backend como proxy autenticado**: Las descargas se realizan a través del backend
+- El backend usa Google Drive API oficial para descargar archivos
+- **Fotos originales**: Se descargan en resolución completa sin compresión ni modificación
+- **Metadatos preservados**: EXIF, fecha, cámara, etc. se mantienen intactos
+- **Seguridad**: El frontend nunca accede directamente a Google Drive
+- **Validación**: Token de descarga validado en cada petición
+
 ### **Google Drive API**
-- Fotos servidas directamente desde Google Drive
-- URLs temporales con parámetros:
-  - `=w400-h400` → Miniatura 400x400 (para vista previa)
-  - `=d` → Descarga en resolución original
+- Fotos almacenadas en Google Drive del fotógrafo
+- URLs de Google Drive para miniaturas:
+  - `=w400` → Miniatura 400x400 (para vista previa)
+- Descarga mediante API oficial de Google Drive (resolución original)
 - No hay almacenamiento local de imágenes
 
 ### **Cosmos DB**
@@ -506,7 +556,7 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
-- [ ] **Enlace de Descarga por Email** - Enviar enlace de descarga con las fotos de la orden de forma automática al confirmar el pago.
+- [x] **Enlace de Descarga por Email** ✅ - Sistema completo de emails con confirmación de pago y enlace de descarga automático.
 - [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Marca de Agua Server-Side** - Usar ImageSharp para mayor seguridad.
@@ -633,13 +683,20 @@ JWT_SECRET_KEY=tu-secreto-de-32-caracteres-minimo
 
 #### 6. Descargar Fotos
 
-1. Una vez confirmado el pago por el administrador:
-2. Recibir **email con enlace de descarga** (si emails habilitados)
-3. O ir a **"Mis Pedidos"** en el menú
-4. Hacer clic en el pedido confirmado
-5. Hacer clic en **"Descargar Fotos"**
-6. Descargar fotos en resolución original (sin marca de agua)
-7. **¡Importante!** El enlace expira en **72 horas**
+1. Después de realizar el pago:
+   - Esperar a que el administrador confirme el pago
+   - Recibirás **email de confirmación de pago**
+2. Cuando el administrador complete la orden:
+   - Recibirás **email con enlace de descarga**
+3. Alternativa: Ir a **"Mis Pedidos"** en el menú
+4. Hacer clic en el pedido completado
+5. Hacer clic en **"Ver Descargas"**
+6. Ver miniaturas sin marca de agua de tus fotos
+7. Hacer clic en **"⬇️ Descargar"** en cada foto
+8. Las fotos se descargan en **resolución original** sin marca de agua ni compresión
+9. **¡Importante!** El enlace expira en **72 horas**
+
+**Nota**: Las descargas se realizan a través del backend como proxy autenticado, preservando metadatos EXIF originales.
 
 ### 👨‍💼 Guía de Administrador
 
@@ -682,17 +739,25 @@ JWT_SECRET_KEY=tu-secreto-de-32-caracteres-minimo
 **Confirmar pago recibido:**
 1. Cliente te notifica que realizó la transferencia
 2. Verificar pago en tu cuenta bancaria
-3. En la lista de pedidos, encontrar el pedido (estado "Pending")
+3. En la lista de pedidos, encontrar el pedido (estado "AwaitingPayment")
 4. Hacer clic en **"Confirmar Pago"**
 5. El sistema automáticamente:
-   - Cambia estado a "PaymentConfirmed"
-   - Genera enlace de descarga único
-   - Envía email al cliente (si habilitado)
+   - Cambia estado a "Processing"
+   - **Envía email de confirmación de pago al cliente**
+   - Notifica que el enlace de descarga llegará próximamente
 
-**Marcar como completado:**
-1. Después de que el cliente descargue las fotos
-2. Hacer clic en **"Marcar Completado"**
-3. El pedido pasa a estado "Completed"
+**Completar orden y generar enlace:**
+1. Una vez verificado el pago, hacer clic en **"Marcar Completado"**
+2. El sistema automáticamente:
+   - Genera enlace de descarga único con validez de 72 horas
+   - **Envía email con enlace de descarga al cliente**
+   - Cambia estado a "Completed"
+3. El cliente puede descargar inmediatamente sus fotos
+
+**Nota**: El sistema envía 3 emails automáticos:
+- Email 1: Orden creada (esperando pago)
+- Email 2: Pago confirmado (próximamente recibirá enlace)
+- Email 3: Orden completa (con enlace de descarga)
 
 #### 5. Dashboard y Reportes
 
@@ -727,15 +792,28 @@ JWT_SECRET_KEY=tu-secreto-de-32-caracteres-minimo
 
 #### Cliente No Recibe Email
 
-**Si los emails están deshabilitados:**
-1. Cliente debe revisar sus pedidos en "Mis Pedidos"
-2. El enlace de descarga está disponible ahí
+**El sistema envía 3 emails automáticos**:
+1. Confirmación de pedido (al crear orden)
+2. Pago confirmado (al validar transferencia)
+3. Enlace de descarga (al completar orden)
 
-**Si los emails están habilitados pero no llegan:**
-1. Verificar configuración SMTP en `appsettings.json`
-2. Verificar que la contraseña de aplicación Gmail sea correcta
-3. Revisar carpeta de spam del cliente
-4. Como alternativa, el cliente puede usar "Mis Pedidos"
+**Si el cliente no recibe emails:**
+1. Verificar carpeta de spam/correo no deseado
+2. Verificar que el email del cliente sea correcto en el pedido
+3. Revisar logs del backend para errores de envío
+4. Verificar configuración de Resend:
+   - API Key válida en `appsettings.json`
+   - Email del remitente verificado en Resend
+5. Como alternativa, el cliente siempre puede:
+   - Ir a **"Mis Pedidos"**
+   - Ver estado actual del pedido
+   - Acceder al enlace de descarga cuando esté disponible
+
+**Si usas SMTP/Gmail en lugar de Resend:**
+1. Verificar que `Provider: "Smtp"` en configuración
+2. Verificar que la contraseña es una **App Password**, no la contraseña normal
+3. Verificar configuración SMTP (puerto 587, SSL habilitado)
+4. Revisar que la cuenta Gmail tiene verificación en 2 pasos activa
 
 #### Enlace de Descarga Expirado
 
@@ -844,12 +922,22 @@ docker-compose up -d
 - En producción, agregar el dominio real a la política de CORS
 
 ### Emails no se envían
+
+**Con Resend (configuración por defecto):**
 - Verificar `Email.Enabled: true` en appsettings.json
+- Verificar que `ResendApiKey` es válida (formato: `re_...`)
+- Verificar que el email del remitente está verificado en tu cuenta Resend
+- Revisar límites de envío en tu plan de Resend
+- Revisar logs del backend para errores específicos
+
+**Con SMTP/Gmail (alternativa):**
+- Verificar `Email.Provider: "Smtp"` en appsettings.json
 - Verificar que `SenderPassword` es una **App Password** de Gmail, no la contraseña normal
 - Verificar configuración SMTP:
   - Server: `smtp.gmail.com`
   - Port: `587`
   - EnableSSL: `true`
+- Asegurarse de que la cuenta Gmail tiene verificación en 2 pasos activa
 - Revisar logs del backend para errores específicos de SMTP
 
 ### Despliegue en Azure falla

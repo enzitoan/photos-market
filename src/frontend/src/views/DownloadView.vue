@@ -43,7 +43,7 @@
             
             <div>
               <span class="text-gray-600">Fotos:</span>
-              <p class="font-medium">{{ downloadInfo.photoIds.length }}</p>
+              <p class="font-medium">{{ downloadInfo.photos?.length || downloadInfo.photoIds?.length || 0 }}</p>
             </div>
             
             <div>
@@ -53,38 +53,44 @@
           </div>
         </div>
         
-        <!-- Download Actions -->
+        <!-- Individual Downloads -->
         <div class="card">
-          <h2 class="text-xl font-semibold mb-4">Opciones de Descarga</h2>
+          <h2 class="text-xl font-semibold mb-4">Descargar Fotos</h2>
           
-          <div class="space-y-4">
-            <button 
-              @click="downloadAll"
-              :disabled="isDownloading"
-              class="w-full btn btn-primary flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          <!-- Vista con miniaturas (si están disponibles) -->
+          <div v-if="downloadInfo.photos && downloadInfo.photos.length > 0" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div 
+              v-for="(photo, index) in downloadInfo.photos" 
+              :key="photo.photoId"
+              class="border rounded-lg overflow-hidden hover:border-primary-500 transition-colors group relative"
             >
-              <span v-if="isDownloading">Preparando descarga...</span>
-              <span v-else>
-                📦 Descargar Todas las Fotos (ZIP)
-              </span>
-            </button>
-            
-            <div class="text-center">
-              <button 
-                @click="showIndividualDownloads = !showIndividualDownloads"
-                class="text-primary-600 hover:text-primary-700 text-sm"
-              >
-                {{ showIndividualDownloads ? 'Ocultar' : 'Mostrar' }} descargas individuales
-              </button>
+              <div class="aspect-square bg-gray-100 relative">
+                <img 
+                  :src="photo.thumbnailUrl" 
+                  :alt="photo.filename"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <!-- Overlay on hover -->
+                <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
+                  <button 
+                    @click="downloadSingle(photo.photoId)"
+                    class="opacity-0 group-hover:opacity-100 transition-opacity bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2"
+                    title="Descargar foto"
+                  >
+                    ⬇️ Descargar
+                  </button>
+                </div>
+              </div>
+              <div class="p-3">
+                <p class="font-medium text-sm truncate">{{ photo.filename || `Foto ${index + 1}` }}</p>
+                <p class="text-xs text-gray-500">ID: {{ photo.photoId.substring(0, 8) }}</p>
+              </div>
             </div>
           </div>
-        </div>
-        
-        <!-- Individual Downloads -->
-        <div v-if="showIndividualDownloads" class="card">
-          <h2 class="text-xl font-semibold mb-4">Descargar Fotos Individuales</h2>
           
-          <div class="grid md:grid-cols-2 gap-4">
+          <!-- Vista de lista (fallback si no hay miniaturas) -->
+          <div v-else-if="downloadInfo.photoIds && downloadInfo.photoIds.length > 0" class="grid md:grid-cols-2 gap-4">
             <div 
               v-for="(photo, index) in downloadInfo.photoIds" 
               :key="photo"
@@ -113,6 +119,7 @@
           <h3 class="font-semibold text-blue-900 mb-2">ℹ️ Información Importante</h3>
           <ul class="text-sm text-blue-800 space-y-1">
             <li>• Las fotos se descargarán en máxima resolución disponible</li>
+            <li>• Haz clic en el botón ⬇️ de cada foto para descargarla</li>
             <li>• Este enlace expira el {{ formatDate(downloadInfo.expiresAt) }}</li>
             <li>• Guarda las fotos en un lugar seguro</li>
             <li>• Si tienes problemas con la descarga, contacta al fotógrafo</li>
@@ -137,8 +144,6 @@ const toast = useToast()
 const loading = ref(true)
 const error = ref(null)
 const downloadInfo = ref(null)
-const isDownloading = ref(false)
-const showIndividualDownloads = ref(false)
 
 const token = route.params.token
 
@@ -155,51 +160,25 @@ async function loadDownloadInfo() {
   }
 }
 
-async function downloadAll() {
-  try {
-    isDownloading.value = true
-    toast.info('Preparando descarga... Esto puede tomar unos momentos.')
-    
-    const blob = await downloadService.downloadPhotos(token)
-    
-    // Create download link
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `photos-${downloadInfo.value.orderNumber}.zip`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
-    
-    toast.success('¡Descarga iniciada!')
-  } catch (err) {
-    console.error('Download error:', err)
-    toast.error('Error al descargar las fotos. Intenta nuevamente.')
-  } finally {
-    isDownloading.value = false
-  }
-}
-
 async function downloadSingle(photoId) {
   try {
     toast.info('Iniciando descarga...')
     
-    const blob = await downloadService.downloadSinglePhoto(token, photoId)
+    // Get the Google Drive URL from the backend
+    const photoUrl = await downloadService.downloadSinglePhoto(token, photoId)
     
-    const url = window.URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `photo-${photoId}.jpg`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    window.URL.revokeObjectURL(url)
+    if (!photoUrl || typeof photoUrl !== 'string') {
+      throw new Error('URL de foto inválida')
+    }
+    
+    // Open the URL in a new window for download
+    window.open(photoUrl, '_blank')
     
     toast.success('Descarga iniciada')
   } catch (err) {
     console.error('Download error:', err)
-    toast.error('Error al descargar la foto')
+    const errorMessage = err.response?.data?.message || err.message || 'Error al descargar la foto'
+    toast.error(errorMessage)
   }
 }
 
