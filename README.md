@@ -556,15 +556,87 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
-- [x] **Enlace de Descarga por Email** ✅ - Sistema completo de emails con confirmación de pago y enlace de descarga automático.
-- [ ] **Compresión de Imágenes** - Optimización automática.
-- [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Marca de Agua Server-Side** - Usar ImageSharp para mayor seguridad.
+- [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
+- [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.
-- [ ] **Testing** - Tests unitarios e integración.
 - [ ] **Cache Redis** - Mejorar performance.
 - [ ] **Búsqueda Avanzada** - Por metadatos, geolocalización, fechas.
 - [ ] **Multi-idioma** - i18n (Español/Inglés)
+- [ ] **Convertir en SAAS** - Permitir múltiples fotógrafos con subdominios personalizados.
+
+## 🧪 Pruebas Unitarias
+
+PhotosMarket incluye un sistema completo de pruebas unitarias para garantizar la calidad y estabilidad del código.
+
+### ✅ Cobertura de Pruebas
+
+**Backend (.NET/xUnit):**
+- ✅ AuthService (autenticación, validación RUT, tokens JWT)
+- ✅ OrderService (creación de órdenes, cálculos, descuentos)
+- ✅ AuthController (endpoints HTTP, validación de requests)
+
+**Frontend (Vue.js/Vitest):**
+- ✅ Cart Store (carrito, totales, descuentos volumen)
+- ✅ Auth Store (autenticación, gestión de tokens)
+- ✅ Auth Service (integración con API)
+
+### 🚀 Ejecutar Pruebas
+
+**Ejecutar todas las pruebas:**
+```powershell
+.\scripts\Run-Tests.ps1
+```
+
+**Solo Backend o Frontend:**
+```powershell
+.\scripts\Run-Tests.ps1 -Component Backend
+.\scripts\Run-Tests.ps1 -Component Frontend
+```
+
+**Con cobertura de código:**
+```powershell
+.\scripts\Run-Tests.ps1 -Coverage
+```
+
+### 🔒 Integración con Despliegue
+
+El script de despliegue ejecuta **automáticamente las pruebas** antes de construir y desplegar:
+
+```powershell
+# Despliegue con pruebas (por defecto)
+.\scripts\Deploy-PhotosMarket.ps1
+
+# Omitir pruebas (NO recomendado para producción)
+.\scripts\Deploy-PhotosMarket.ps1 -SkipTests
+```
+
+**Si las pruebas fallan:**
+- ❌ El despliegue se detiene inmediatamente
+- 🚫 No se construyen imágenes Docker
+- 🔒 No se despliega a Azure
+
+### 🔄 GitHub Actions CI/CD
+
+Los workflows de GitHub Actions ejecutan pruebas automáticamente:
+
+**Workflow CI (Pull Requests):**
+- ✅ Ejecuta pruebas Backend + Frontend
+- ✅ Valida builds
+- ❌ Bloquea merge si fallan pruebas
+
+**Workflow Deploy (Push to main):**
+- 🧪 Ejecuta TODAS las pruebas primero
+- 🚫 Cancela deployment si las pruebas fallan
+- ✅ Despliega solo si todas las pruebas pasan
+- 🐳 Build y push a Azure Container Registry
+- ☁️ Deploy a Azure Container Apps
+
+**Ver resultados:** GitHub → Actions tab → Workflow runs
+
+**Documentación completa:** 
+- [Guía de Pruebas Unitarias](docs/TESTING-GUIDE.md)
+- [GitHub Actions Testing](docs/GITHUB-ACTIONS-TESTING.md)
 
 ## 📖 Documentación Adicional
 
