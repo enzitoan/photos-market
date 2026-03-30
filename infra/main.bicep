@@ -61,6 +61,18 @@ param emailApiKey string
 @description('Enable email sending')
 param emailEnabled bool = true
 
+@description('Watermark font size divisor (lower = larger watermark, recommended: 20-50)')
+param watermarkFontSizeDivisor string = '50'
+
+@description('Watermark text opacity (0.0-1.0, recommended: 0.5-0.9)')
+param watermarkTextOpacity string = '0.5'
+
+@description('Watermark shadow opacity (0.0-1.0, recommended: 0.5-0.8)')
+param watermarkShadowOpacity string = '0.7'
+
+@description('Watermark vertical position (0.0=top, 1.0=bottom, recommended: 0.85-0.95)')
+param watermarkVerticalPosition string = '0.9'
+
 // Container Registry
 module containerRegistry 'modules/container-registry.bicep' = {
   name: 'containerRegistry'
@@ -149,6 +161,10 @@ module backendApp 'modules/backend-container-app.bicep' = {
     googleDriveRootFolderId: googleDriveRootFolderId
     frontendUrl: 'https://${frontendApp.outputs.fqdn}'
     emailEnabled: emailEnabled
+    watermarkFontSizeDivisor: watermarkFontSizeDivisor
+    watermarkTextOpacity: watermarkTextOpacity
+    watermarkShadowOpacity: watermarkShadowOpacity
+    watermarkVerticalPosition: watermarkVerticalPosition
   }
   dependsOn: [
     containerRegistry

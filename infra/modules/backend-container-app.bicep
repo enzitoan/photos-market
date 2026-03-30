@@ -25,6 +25,18 @@ param frontendUrl string = ''
 @description('Enable email sending')
 param emailEnabled bool = true
 
+@description('Watermark font size divisor (lower = larger watermark)')
+param watermarkFontSizeDivisor string = '50'
+
+@description('Watermark text opacity (0.0-1.0)')
+param watermarkTextOpacity string = '0.5'
+
+@description('Watermark shadow opacity (0.0-1.0)')
+param watermarkShadowOpacity string = '0.7'
+
+@description('Watermark vertical position (0.0=top, 1.0=bottom)')
+param watermarkVerticalPosition string = '0.9'
+
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -197,6 +209,26 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'Email__SenderName'
               value: 'Photos Market'
+            }
+            {
+              name: 'Application__DefaultWatermarkText'
+              value: '@egan.fotografia'
+            }
+            {
+              name: 'Application__WatermarkFontSizeDivisor'
+              value: watermarkFontSizeDivisor
+            }
+            {
+              name: 'Application__WatermarkTextOpacity'
+              value: watermarkTextOpacity
+            }
+            {
+              name: 'Application__WatermarkShadowOpacity'
+              value: watermarkShadowOpacity
+            }
+            {
+              name: 'Application__WatermarkVerticalPosition'
+              value: watermarkVerticalPosition
             }
           ]
         }

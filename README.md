@@ -245,6 +245,11 @@ az deployment group create \
 - **Log Analytics Workspace** - Monitoreo centralizado y logs
 - **Container Apps Environment** - Entorno compartido para las apps
 
+**Configuración de marca de agua en Azure:**
+Los parámetros de marca de agua (tamaño, transparencia, posición) son **configurables durante el despliegue** y **modificables después** desde Azure Portal sin redesplegar.
+
+Ver [Guía de Configuración en Azure](docs/AZURE-WATERMARK-CONFIG.md) para personalizar en producción.
+
 Para más detalles sobre la infraestructura, consulta:
 - [Documentación de Infraestructura](infra/README.md)
 - [Documentación de Scripts](scripts/README.md)
@@ -416,13 +421,33 @@ El archivo `src/backend/appsettings.json` contiene:
     "FrontendUrl": "http://localhost:3001",
     "DownloadLinkExpirationHours": 72,
     "WatermarkText": "PhotosMarket © {YEAR}",
+    "DefaultWatermarkText": "@egan.fotografia",  // Texto de marca de agua en descargas
     "PhotoPricePerUnit": 1000,  // Precio en CLP
     "Currency": "CLP",
     "BulkDiscountMinPhotos": 5,  // Mínimo de fotos para descuento
-    "BulkDiscountPercentage": 20  // Porcentaje de descuento
+    "BulkDiscountPercentage": 20,  // Porcentaje de descuento
+    
+    // Configuración de Marca de Agua (Personalizables)
+    "WatermarkFontSizeDivisor": 30,      // Menor = marca más grande (20-50)
+    "WatermarkTextOpacity": 0.8,         // Transparencia texto (0.0-1.0)
+    "WatermarkShadowOpacity": 0.7,       // Transparencia sombra (0.0-1.0)
+    "WatermarkVerticalPosition": 0.9     // Posición vertical (0.0=arriba, 1.0=abajo)
   }
 }
 ```
+
+**Configuración de Marca de Agua:**
+- **DefaultWatermarkText**: Texto que aparece en las fotos descargadas (ej: `@egan.fotografia`)
+- **WatermarkFontSizeDivisor**: Tamaño de fuente (menor número = marca más grande)
+  - `20` = muy grande, `30` = mediano (default), `40` = pequeño
+- **WatermarkTextOpacity**: Opacidad del texto blanco (0.0-1.0)
+  - `0.6` = sutil, `0.8` = balanceado (default), `1.0` = opaco
+- **WatermarkShadowOpacity**: Opacidad de la sombra negra (0.0-1.0)
+  - `0.5` = suave, `0.7` = balanceado (default), `0.9` = pronunciado
+- **WatermarkVerticalPosition**: Posición vertical (0.0-1.0)
+  - `0.5` = centro, `0.9` = inferior (default), `0.95` = muy abajo
+
+Para guía completa de personalización, ver [docs/WATERMARK-CUSTOMIZATION.md](docs/WATERMARK-CUSTOMIZATION.md)
 
 **Sistema de Descuentos:**
 - **BulkDiscountMinPhotos**: Cantidad mínima de fotos para aplicar descuento (default: 5)
@@ -513,17 +538,24 @@ El sistema viene configurado con Resend API. Para usar tu propia cuenta:
 
 ### **Marcas de Agua**
 - **Vista previa (PhotoCard)**: Overlay CSS con marca de agua sobre miniaturas
-- **Vista de descarga**: Miniaturas sin marca de agua (fotos ya compradas)
+- **Descarga post-compra**: Marca de agua permanente server-side con ImageSharp (`@egan.fotografia`)
+  - Aplicada automáticamente al descargar fotos después de finalizar el pedido
+  - Posición: Centro/inferior de la imagen (configurable)
+  - Renderizado server-side con SixLabors.ImageSharp para máxima seguridad
+  - Incluye sombra para mejor visibilidad en cualquier fondo
+  - **Tamaño y transparencia 100% configurables** desde `appsettings.json` (sin tocar código)
+  - Ver [Guía de Personalización](docs/WATERMARK-CUSTOMIZATION.md) para ajustar tamaño, opacidad y posición
 - Miniaturas: `400x400px` usando URLs de Google Drive con parámetro `=w400`
-- Para producción: considerar implementación en servidor con SixLabors.ImageSharp
 
 ### **Sistema de Descarga**
 - **Backend como proxy autenticado**: Las descargas se realizan a través del backend
 - El backend usa Google Drive API oficial para descargar archivos
-- **Fotos originales**: Se descargan en resolución completa sin compresión ni modificación
+- **Marca de agua automática**: Todas las fotos descargadas incluyen marca de agua `@egan.fotografia` en el centro/inferior
+- **Procesamiento server-side**: Usa SixLabors.ImageSharp para renderizar marca de agua permanente
 - **Metadatos preservados**: EXIF, fecha, cámara, etc. se mantienen intactos
 - **Seguridad**: El frontend nunca accede directamente a Google Drive
 - **Validación**: Token de descarga validado en cada petición
+- **Protección**: Marca de agua no removible (renderizada en la imagen, no overlay CSS)
 
 ### **Google Drive API**
 - Fotos almacenadas en Google Drive del fotógrafo
@@ -556,7 +588,7 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
-- [ ] **Marca de Agua Server-Side** - Usar ImageSharp para mayor seguridad.
+- [x] **Marca de Agua Server-Side** - ✅ Implementado con ImageSharp para máxima seguridad.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.
@@ -690,12 +722,15 @@ JWT_SECRET_KEY=tu-secreto-de-32-caracteres-minimo
 3. Alternativa: Ir a **"Mis Pedidos"** en el menú
 4. Hacer clic en el pedido completado
 5. Hacer clic en **"Ver Descargas"**
-6. Ver miniaturas sin marca de agua de tus fotos
+6. Ver miniaturas de tus fotos
 7. Hacer clic en **"⬇️ Descargar"** en cada foto
-8. Las fotos se descargan en **resolución original** sin marca de agua ni compresión
+8. Las fotos se descargan con:
+   - **Resolución original** completa
+   - **Marca de agua `@egan.fotografia`** en centro/inferior (permanente, no removible)
+   - **Metadatos EXIF** preservados
 9. **¡Importante!** El enlace expira en **72 horas**
 
-**Nota**: Las descargas se realizan a través del backend como proxy autenticado, preservando metadatos EXIF originales.
+**Nota**: Las descargas incluyen marca de agua server-side renderizada con ImageSharp para proteger los derechos del fotógrafo.
 
 ### 👨‍💼 Guía de Administrador
 

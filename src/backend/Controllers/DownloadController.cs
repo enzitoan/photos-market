@@ -12,17 +12,20 @@ public class DownloadController : ControllerBase
     private readonly IDownloadLinkRepository _downloadLinkRepository;
     private readonly IOrderRepository _orderRepository;
     private readonly GoogleDriveService _googleDriveService;
+    private readonly IWatermarkService _watermarkService;
     private readonly ILogger<DownloadController> _logger;
 
     public DownloadController(
         IDownloadLinkRepository downloadLinkRepository,
         IOrderRepository orderRepository,
         GoogleDriveService googleDriveService,
+        IWatermarkService watermarkService,
         ILogger<DownloadController> logger)
     {
         _downloadLinkRepository = downloadLinkRepository;
         _orderRepository = orderRepository;
         _googleDriveService = googleDriveService;
+        _watermarkService = watermarkService;
         _logger = logger;
     }
 
@@ -167,11 +170,36 @@ public class DownloadController : ControllerBase
             // Download the photo directly from Google Drive using the service
             var photoStream = await _googleDriveService.DownloadPhotoAsync(photoId);
 
+            // Aplicar marca de agua server-side solo si es una imagen
+            var extension = Path.GetExtension(photo.Filename).ToLowerInvariant();
+            var isImage = extension is ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp";
+            
+            Stream finalStream;
+            if (isImage)
+            {
+                _logger.LogInformation("Aplicando marca de agua a {Filename}", photo.Filename);
+                try
+                {
+                    finalStream = await _watermarkService.ApplyWatermarkAsync(photoStream);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error aplicando marca de agua a {Filename}, devolviendo imagen original", photo.Filename);
+                    photoStream.Position = 0; // Reset stream position
+                    finalStream = photoStream;
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Archivo {Filename} no es una imagen, devolviendo sin marca de agua", photo.Filename);
+                finalStream = photoStream;
+            }
+
             // Determine the content type based on the filename
             var contentType = GetContentType(photo.Filename);
             
             // Return the file directly to the client
-            return File(photoStream, contentType, photo.Filename);
+            return File(finalStream, contentType, photo.Filename);
         }
         catch (Exception ex)
         {

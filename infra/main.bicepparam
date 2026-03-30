@@ -14,3 +14,9 @@ param emailApiKey = readEnvironmentVariable('EMAIL_API_KEY', '')
 
 // Optional - Email configuration
 param emailEnabled = true
+
+// Optional - Watermark configuration (can be customized per deployment)
+param watermarkFontSizeDivisor = '50'     // Marca pequeña y sutil
+param watermarkTextOpacity = '0.5'        // Muy transparente (discreta)
+param watermarkShadowOpacity = '0.7'      // Sombra balanceada para legibilidad
+param watermarkVerticalPosition = '0.9'   // Posición inferior
