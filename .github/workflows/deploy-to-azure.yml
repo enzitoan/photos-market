@@ -47,11 +47,11 @@ jobs:
 
       - name: Restore Backend dependencies
         working-directory: ./src/backend
-        run: dotnet restore
+        run: dotnet restore PhotosMarket.API.csproj
 
       - name: Build Backend
         working-directory: ./src/backend
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build PhotosMarket.API.csproj --no-restore --configuration Release
 
       - name: Run Backend Tests
         working-directory: ./src/backend
