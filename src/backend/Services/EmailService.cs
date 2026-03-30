@@ -249,7 +249,19 @@ public class EmailService : IEmailService
             return;
         }
 
-        var downloadUrl = $"{_appSettings.FrontendUrl}/download/{downloadLink.Token}";
+        // Generate download URL with fallback
+        var frontendUrl = !string.IsNullOrEmpty(_appSettings.FrontendUrl) 
+            ? _appSettings.FrontendUrl 
+            : "http://localhost:3001";
+        var downloadUrl = $"{frontendUrl}/download/{downloadLink.Token}";
+        
+        _logger.LogInformation(
+            "Generating download URL for order {OrderId}. FrontendUrl: {FrontendUrl}, DownloadUrl: {DownloadUrl}", 
+            order.Id, 
+            _appSettings.FrontendUrl ?? "(empty)", 
+            downloadUrl
+        );
+        
         var expirationDate = downloadLink.ExpiresAt;
         var hoursUntilExpiration = (int)(expirationDate - DateTime.UtcNow).TotalHours;
 

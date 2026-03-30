@@ -60,6 +60,13 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"))
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.Configure<ApplicationSettings>(builder.Configuration.GetSection("Application"));
 
+// Log Application Settings
+var appSettings = builder.Configuration.GetSection("Application").Get<ApplicationSettings>();
+Console.WriteLine($"📋 Application Settings Loaded:");
+Console.WriteLine($"  - BaseUrl: {(string.IsNullOrEmpty(appSettings?.BaseUrl) ? "EMPTY" : appSettings.BaseUrl)}");
+Console.WriteLine($"  - FrontendUrl: {(string.IsNullOrEmpty(appSettings?.FrontendUrl) ? "EMPTY" : appSettings.FrontendUrl)}");
+Console.WriteLine($"  - DownloadLinkExpirationHours: {appSettings?.DownloadLinkExpirationHours ?? 0}");
+
 // Configure Resend for email sending
 var emailSettings = builder.Configuration.GetSection("Email").Get<EmailSettings>();
 builder.Services.Configure<Resend.ResendClientOptions>(options =>

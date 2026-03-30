@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using PhotosMarket.API.Services;
 using PhotosMarket.API.Repositories;
 using PhotosMarket.API.DTOs;
+using PhotosMarket.API.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace PhotosMarket.API.Controllers;
 
@@ -13,6 +15,7 @@ public class DownloadController : ControllerBase
     private readonly IOrderRepository _orderRepository;
     private readonly GoogleDriveService _googleDriveService;
     private readonly IWatermarkService _watermarkService;
+    private readonly ApplicationSettings _appSettings;
     private readonly ILogger<DownloadController> _logger;
 
     public DownloadController(
@@ -20,12 +23,14 @@ public class DownloadController : ControllerBase
         IOrderRepository orderRepository,
         GoogleDriveService googleDriveService,
         IWatermarkService watermarkService,
+        IOptions<ApplicationSettings> appSettings,
         ILogger<DownloadController> logger)
     {
         _downloadLinkRepository = downloadLinkRepository;
         _orderRepository = orderRepository;
         _googleDriveService = googleDriveService;
         _watermarkService = watermarkService;
+        _appSettings = appSettings.Value;
         _logger = logger;
     }
 
@@ -71,10 +76,16 @@ public class DownloadController : ControllerBase
             downloadLink.DownloadCount++;
             await _downloadLinkRepository.UpdateAsync(downloadLink);
 
+            // Generate absolute URL for download
+            var baseUrl = !string.IsNullOrEmpty(_appSettings.BaseUrl) 
+                ? _appSettings.BaseUrl 
+                : $"{Request.Scheme}://{Request.Host}";
+            var downloadUrl = $"{baseUrl}/api/download/{token}/files";
+
             var downloadLinkDto = new DownloadLinkDto
             {
                 Token = downloadLink.Token,
-                DownloadUrl = $"/api/download/{token}/files",
+                DownloadUrl = downloadUrl,
                 ExpiresAt = downloadLink.ExpiresAt,
                 IsExpired = downloadLink.IsExpired,
                 OrderNumber = order.Id.Substring(0, 8).ToUpper(),

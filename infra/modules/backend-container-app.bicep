@@ -22,6 +22,9 @@ param googleDriveRootFolderId string
 @description('Frontend URL for CORS')
 param frontendUrl string = ''
 
+@description('Backend Base URL')
+param backendBaseUrl string = ''
+
 @description('Enable email sending')
 param emailEnabled bool = true
 
@@ -113,6 +116,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
             {
               name: 'FRONTEND_URL'
               value: frontendUrl
+            }
+            {
+              name: 'Application__FrontendUrl'
+              value: frontendUrl
+            }
+            {
+              name: 'Application__BaseUrl'
+              value: backendBaseUrl
             }
             {
               name: 'ASPNETCORE_URLS'

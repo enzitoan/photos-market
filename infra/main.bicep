@@ -160,6 +160,7 @@ module backendApp 'modules/backend-container-app.bicep' = {
     keyVaultUri: keyVault.outputs.uri
     googleDriveRootFolderId: googleDriveRootFolderId
     frontendUrl: 'https://${frontendApp.outputs.fqdn}'
+    backendBaseUrl: 'https://${appName}-backend-${environmentName}.${containerAppsEnvironment.outputs.defaultDomain}'
     emailEnabled: emailEnabled
     watermarkFontSizeDivisor: watermarkFontSizeDivisor
     watermarkTextOpacity: watermarkTextOpacity
