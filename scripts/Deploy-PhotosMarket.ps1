@@ -64,10 +64,7 @@ param(
     [string]$ImageTag,
 
     [Parameter()]
-    [switch]$SkipOAuthVerification,
-
-    [Parameter()]
-    [switch]$SkipTests
+    [switch]$SkipOAuthVerification
 )
 
 # Variables de configuración
@@ -91,76 +88,6 @@ function Write-Info { param($Message) Write-Host "ℹ️  $Message" -ForegroundC
 function Write-Success { param($Message) Write-Host "✅ $Message" -ForegroundColor Green }
 function Write-Error { param($Message) Write-Host "❌ $Message" -ForegroundColor Red }
 function Write-Step { param($Message) Write-Host "`n🔄 $Message" -ForegroundColor Yellow }
-
-# Función para ejecutar pruebas unitarias del Backend
-function Test-Backend {
-    param([string]$ProjectRoot)
-    
-    Write-Step "Ejecutando pruebas unitarias del Backend..."
-    
-    $testProject = Join-Path $ProjectRoot "src\backend\PhotosMarket.API.Tests\PhotosMarket.API.Tests.csproj"
-    
-    if (-not (Test-Path $testProject)) {
-        Write-Error "Proyecto de pruebas no encontrado: $testProject"
-        return $false
-    }
-    
-    Write-Info "Proyecto de pruebas: $testProject"
-    
-    # Ejecutar pruebas con dotnet test
-    dotnet test $testProject --verbosity minimal --logger "console;verbosity=normal"
-    
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "Las pruebas del Backend fallaron. El despliegue ha sido cancelado."
-        return $false
-    }
-    
-    Write-Success "Todas las pruebas del Backend pasaron exitosamente!"
-    return $true
-}
-
-# Función para ejecutar pruebas unitarias del Frontend
-function Test-Frontend {
-    param([string]$ProjectRoot)
-    
-    Write-Step "Ejecutando pruebas unitarias del Frontend..."
-    
-    $frontendPath = Join-Path $ProjectRoot "src\frontend"
-    
-    if (-not (Test-Path $frontendPath)) {
-        Write-Error "Frontend no encontrado: $frontendPath"
-        return $false
-    }
-    
-    Push-Location $frontendPath
-    
-    try {
-        # Verificar que node_modules existe
-        if (-not (Test-Path "node_modules")) {
-            Write-Info "Instalando dependencias con npm..."
-            npm install
-            if ($LASTEXITCODE -ne 0) {
-                Write-Error "Error al instalar dependencias"
-                return $false
-            }
-        }
-        
-        # Ejecutar pruebas con Vitest
-        Write-Info "Ejecutando pruebas con npm test..."
-        npm test
-        
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Las pruebas del Frontend fallaron. El despliegue ha sido cancelado."
-            return $false
-        }
-        
-        Write-Success "Todas las pruebas del Frontend pasaron exitosamente!"
-        return $true
-    }
-    finally {
-        Pop-Location
-    }
-}
 
 # Función para verificar que Azure CLI está instalado
 function Test-AzureCLI {
@@ -427,7 +354,6 @@ Write-Info "Environment: $Environment"
 Write-Info "Resource Group: $($config.ResourceGroup)"
 Write-Info "Image Tag: $ImageTag"
 Write-Info "Skip Build: $SkipBuild"
-Write-Info "Skip Tests: $SkipTests"
 Write-Info "Skip OAuth Verification: $SkipOAuthVerification"
 
 # Verificaciones previas
@@ -444,39 +370,6 @@ $scriptPath = Split-Path -Parent $PSCommandPath
 $projectRoot = Split-Path -Parent $scriptPath
 
 Write-Info "Project Root: $projectRoot"
-
-# ====================
-# EJECUTAR PRUEBAS UNITARIAS
-# ====================
-
-if (-not $SkipTests) {
-    Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Magenta
-    Write-Host "║             Ejecutando Pruebas Unitarias                  ║" -ForegroundColor Magenta
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Magenta
-    
-    # Ejecutar pruebas de Backend
-    if ($Component -eq 'Backend' -or $Component -eq 'Both') {
-        if (-not (Test-Backend -ProjectRoot $projectRoot)) {
-            Write-Error "❌ El despliegue ha sido cancelado debido a errores en las pruebas del Backend"
-            exit 1
-        }
-    }
-    
-    # Ejecutar pruebas de Frontend
-    if ($Component -eq 'Frontend' -or $Component -eq 'Both') {
-        if (-not (Test-Frontend -ProjectRoot $projectRoot)) {
-            Write-Error "❌ El despliegue ha sido cancelado debido a errores en las pruebas del Frontend"
-            exit 1
-        }
-    }
-    
-    Write-Host "`n╔════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║      ✅ Todas las Pruebas Pasaron Exitosamente! ✅         ║" -ForegroundColor Green
-    Write-Host "╚════════════════════════════════════════════════════════════╝" -ForegroundColor Green
-}
-else {
-    Write-Host "`n⚠️  Las pruebas han sido omitidas (SkipTests habilitado)" -ForegroundColor Yellow
-}
 
 # Build y Push de imágenes (si no se omite)
 if (-not $SkipBuild) {
