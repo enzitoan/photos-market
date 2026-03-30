@@ -45,20 +45,11 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore Backend dependencies
-        working-directory: ./src/backend
-        run: dotnet restore PhotosMarket.API.csproj
-
-      - name: Build Backend
-        working-directory: ./src/backend
-        run: dotnet build PhotosMarket.API.csproj --no-restore --configuration Release
-
       - name: Run Backend Tests
         working-directory: ./src/backend
         run: |
           echo "🧪 Running Backend Unit Tests..."
           dotnet test PhotosMarket.API.Tests/PhotosMarket.API.Tests.csproj \
-            --no-build \
             --configuration Release \
             --verbosity normal \
             --logger "console;verbosity=detailed"
