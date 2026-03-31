@@ -277,8 +277,8 @@ public class EmailService : IEmailService
         var htmlBody = $@"
                 <html>
                 <body style='font-family: Arial, sans-serif;'>
-                    <h2>¡Pago Confirmado! 🎉</h2>
-                    <p>Nos complace informarte que hemos recibido y confirmado tu pago por {order.Photos.Count} fotografía(s).</p>
+                    <h2>Pedido Completado! 🎉</h2>
+                    <p>Nos complace informarte que hemos procesado tu pedido por {order.Photos.Count} fotografía(s).</p>
                     
                     <h3>Resumen del Pedido:</h3>
                     <ul>
@@ -287,14 +287,8 @@ public class EmailService : IEmailService
                         {discountSection}
                         <li><strong>Total Pagado:</strong> {order.Currency} {order.TotalAmount:F2}</li>
                         <li><strong>Fecha de Pago:</strong> {(order.PaidAt.HasValue ? order.PaidAt.Value.ToString("dd/MM/yyyy HH:mm") : DateTime.UtcNow.ToString("dd/MM/yyyy HH:mm"))}</li>
+                        <li><strong>Estado de Pago:</strong> Confirmado</li>
                     </ul>
-
-                    <div style='background-color: #d4edda; padding: 20px; margin: 20px 0; border-left: 4px solid #28a745; border-radius: 4px;'>
-                        <h3 style='margin-top: 0; color: #155724;'>✅ Pago Confirmado</h3>
-                        <p style='margin-bottom: 0; color: #155724;'>
-                            Tu pago ha sido verificado exitosamente. Ya puedes descargar tus fotografías en alta resolución.
-                        </p>
-                    </div>
 
                     <div style='background-color: #cfe2ff; padding: 20px; margin: 20px 0; border-left: 4px solid #0d6efd; border-radius: 4px;'>
                         <h3 style='margin-top: 0; color: #084298;'>📥 Descargar tus Fotografías</h3>
@@ -327,8 +321,8 @@ public class EmailService : IEmailService
                         <li>Haz clic en el botón <strong>Descargar Mis Fotos</strong> de arriba</li>
                         <li>Serás redirigido a la página de descarga</li>
                         <li>Podrás descargar todas tus fotos en resolución original</li>
-                        <li>Las fotos <strong>NO tendrán marca de agua</strong></li>
                         <li>Descarga todas las fotos antes de que expire el enlace</li>
+                        <li>Las fotos tiene una marca de agua ligera para proteger tu compra, pero si deseas una versión sin marca de agua, contáctanos directamente.</li>
                     </ol>
 
                     <p style='color: #666; font-size: 12px; margin-top: 30px;'>
@@ -344,7 +338,7 @@ public class EmailService : IEmailService
         var message = new EmailMessage();
         message.From = _settings.SenderEmail;
         message.To.Add(userEmail);
-        message.Subject = $"[Photos Market] - Pago Confirmado ✅ - Descarga tus Fotos #{order.Id.Substring(0, 8)}";
+        message.Subject = $"[Photos Market] - Pedido Completado ✅ - Descarga tus Fotos #{order.Id.Substring(0, 8)}";
         message.HtmlBody = htmlBody;
 
         try
