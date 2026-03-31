@@ -19,10 +19,12 @@ public interface IWatermarkService
 public class WatermarkService : IWatermarkService
 {
     private readonly ApplicationSettings _settings;
+    private readonly ILogger<WatermarkService> _logger;
 
-    public WatermarkService(IOptions<ApplicationSettings> settings)
+    public WatermarkService(IOptions<ApplicationSettings> settings, ILogger<WatermarkService> logger)
     {
         _settings = settings.Value;
+        _logger = logger;
     }
 
     public string GetWatermarkText()
@@ -51,8 +53,42 @@ public class WatermarkService : IWatermarkService
         // Usar configuración para ajustar el tamaño (menor divisor = marca más grande)
         var fontSize = Math.Max(image.Width, image.Height) / _settings.WatermarkFontSizeDivisor;
         
-        // Crear una fuente (usando fuente del sistema)
-        var font = SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
+        // Crear una fuente - usar fuentes disponibles en Linux
+        // Orden de prioridad: Liberation Sans (fonts-liberation) -> DejaVu Sans -> Arial -> cualquier Sans
+        Font font;
+        string fontUsed = "Unknown";
+        try
+        {
+            font = SystemFonts.CreateFont("Liberation Sans", fontSize, FontStyle.Bold);
+            fontUsed = "Liberation Sans";
+        }
+        catch
+        {
+            try
+            {
+                font = SystemFonts.CreateFont("DejaVu Sans", fontSize, FontStyle.Bold);
+                fontUsed = "DejaVu Sans";
+            }
+            catch
+            {
+                try
+                {
+                    font = SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
+                    fontUsed = "Arial";
+                }
+                catch
+                {
+                    // Fallback: usar la primera fuente Sans disponible
+                    var fontFamily = SystemFonts.Families.FirstOrDefault(f => 
+                        f.Name.Contains("Sans", StringComparison.OrdinalIgnoreCase)) 
+                        ?? SystemFonts.Families.First();
+                    font = fontFamily.CreateFont(fontSize, FontStyle.Bold);
+                    fontUsed = fontFamily.Name;
+                }
+            }
+        }
+        
+        _logger.LogInformation("Aplicando watermark con fuente: {Font}, tamaño: {Size}px", fontUsed, fontSize);
         
         // Calcular posición: centro horizontal, posición vertical configurable
         var textOptions = new RichTextOptions(font)

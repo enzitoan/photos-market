@@ -16,6 +16,16 @@ RUN dotnet publish "PhotosMarket.API.csproj" -c Release -o /app/publish /p:UseAp
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+
+# Instalar dependencias para ImageSharp y fuentes del sistema
+# Necesario para aplicar watermarks en imágenes
+RUN apt-get update && apt-get install -y \
+    libgdiplus \
+    libc6-dev \
+    fontconfig \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
