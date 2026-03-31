@@ -39,11 +39,14 @@ public class GoogleDriveService
             {
                 _logger.LogInformation("Using Google Drive credentials from environment variable (Key Vault)");
                 
-                using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(_settings.CredentialsJson)))
+                credential = await Task.Run(() =>
                 {
-                    credential = GoogleCredential.FromStream(stream)
-                        .CreateScoped(DriveService.Scope.DriveReadonly);
-                }
+                    using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(_settings.CredentialsJson)))
+                    {
+                        return GoogleCredential.FromStream(stream)
+                            .CreateScoped(DriveService.Scope.DriveReadonly);
+                    }
+                });
             }
             // Prioridad 2: Usar archivo local (desarrollo)
             else
@@ -61,7 +64,7 @@ public class GoogleDriveService
 
                 using (var stream = new FileStream(credentialsPath, FileMode.Open, FileAccess.Read))
                 {
-                    credential = GoogleCredential.FromStream(stream)
+                    credential = (await GoogleCredential.FromStreamAsync(stream, cancellationToken: CancellationToken.None))
                         .CreateScoped(DriveService.Scope.DriveReadonly);
                 }
             }

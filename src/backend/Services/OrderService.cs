@@ -163,7 +163,7 @@ public class OrderService : IOrderService
             throw new InvalidOperationException("Order must be in Processing status to be completed");
 
         // Generate download link when order is completed
-        DownloadLink downloadLink;
+        DownloadLink? downloadLink;
         try
         {
             // Check if a link already exists
