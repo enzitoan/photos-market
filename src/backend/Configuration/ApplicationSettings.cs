@@ -19,19 +19,19 @@ public class ApplicationSettings
     /// Divisor del tamaño de la imagen para calcular el tamaño de fuente.
     /// Menor = marca más grande. Ejemplo: 20 = ~5% del tamaño, 30 = ~3%, 40 = ~2.5%
     /// </summary>
-    public float WatermarkFontSizeDivisor { get; set; } = 50f;
+    public float WatermarkFontSizeDivisor { get; set; } = 55f;
     
     /// <summary>
     /// Opacidad del texto principal (0.0 = transparente, 1.0 = opaco)
     /// Valores recomendados: 0.6 - 0.9
     /// </summary>
-    public float WatermarkTextOpacity { get; set; } = 0.5f;
+    public float WatermarkTextOpacity { get; set; } = 0.6f;
     
     /// <summary>
     /// Opacidad de la sombra del texto (0.0 = transparente, 1.0 = opaco)
-    /// Valores recomendados: 0.5 - 0.8
+    /// Valores recomendados: 0.3 - 0.5
     /// </summary>
-    public float WatermarkShadowOpacity { get; set; } = 0.7f;
+    public float WatermarkShadowOpacity { get; set; } = 0.3f;
     
     /// <summary>
     /// Posición vertical del watermark (0.0 = arriba, 1.0 = abajo)

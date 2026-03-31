@@ -1,11 +1,6 @@
 using Microsoft.Extensions.Options;
 using PhotosMarket.API.Configuration;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Formats.Png;
-using SixLabors.Fonts;
-using SixLabors.ImageSharp.Drawing.Processing;
+using SkiaSharp;
 
 namespace PhotosMarket.API.Services;
 
@@ -32,7 +27,7 @@ public class WatermarkService : IWatermarkService
     }
 
     /// <summary>
-    /// Aplica una marca de agua en el centro/inferior de la imagen
+    /// Aplica una marca de agua en el centro/inferior de la imagen usando SkiaSharp
     /// PRESERVA el formato original y usa calidad máxima para evitar pérdida de datos
     /// </summary>
     /// <param name="imageStream">Stream de la imagen original</param>
@@ -40,152 +35,81 @@ public class WatermarkService : IWatermarkService
     /// <returns>Stream de la imagen con marca de agua aplicada (mismo formato que la original)</returns>
     public async Task<Stream> ApplyWatermarkAsync(Stream imageStream, string? customText = null)
     {
-        var watermarkText = customText ?? _settings.DefaultWatermarkText;
-        
-        // Cargar la imagen Y detectar el formato original
-        var imageInfo = await Image.IdentifyAsync(imageStream);
-        imageStream.Position = 0; // Reset para cargar la imagen
-        
-        using var image = await Image.LoadAsync(imageStream);
-        
-        // Calcular tamaño de fuente dinámico basado en el tamaño de la imagen
-        // Usar configuración para ajustar el tamaño (menor divisor = marca más grande)
-        var fontSize = Math.Max(image.Width, image.Height) / _settings.WatermarkFontSizeDivisor;
-        
-        // Crear una fuente - priorizar Montserrat para marca consistente
-        // Orden de prioridad: Montserrat -> Montserrat Bold -> Liberation Sans -> DejaVu Sans -> Arial -> cualquier Sans
-        Font font;
-        string fontUsed = "Unknown";
-        try
+        return await Task.Run(() =>
         {
-            font = SystemFonts.CreateFont("Montserrat", fontSize, FontStyle.Bold);
-            fontUsed = "Montserrat";
-        }
-        catch
-        {
-            try
+            var watermarkText = customText ?? _settings.DefaultWatermarkText;
+            
+            // Cargar la imagen desde el stream
+            using var originalBitmap = SKBitmap.Decode(imageStream);
+            if (originalBitmap == null)
             {
-                // Intentar variante explícita de Montserrat Bold
-                font = SystemFonts.CreateFont("Montserrat Bold", fontSize, FontStyle.Bold);
-                fontUsed = "Montserrat Bold";
+                throw new InvalidOperationException("No se pudo decodificar la imagen");
             }
-            catch
-            {
-                try
-                {
-                    font = SystemFonts.CreateFont("Liberation Sans", fontSize, FontStyle.Bold);
-                    fontUsed = "Liberation Sans";
-                }
-                catch
-                {
-                    try
-                    {
-                        font = SystemFonts.CreateFont("DejaVu Sans", fontSize, FontStyle.Bold);
-                        fontUsed = "DejaVu Sans";
-                    }
-                    catch
-                    {
-                        try
-                        {
-                            font = SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
-                            fontUsed = "Arial";
-                        }
-                        catch
-                        {
-                            // Fallback: usar la primera fuente Sans disponible o cualquier fuente
-                            var sansFont = SystemFonts.Families.FirstOrDefault(f => 
-                                f.Name.Contains("Sans", StringComparison.OrdinalIgnoreCase));
-                            
-                            // Si hay una fuente Sans, usarla; si no, usar la primera disponible
-                            var fontFamily = !string.IsNullOrEmpty(sansFont.Name) 
-                                ? sansFont 
-                                : SystemFonts.Families.First();
-                            
-                            font = fontFamily.CreateFont(fontSize, FontStyle.Bold);
-                            fontUsed = fontFamily.Name;
-                        }
-                    }
-                }
-            }
-        }
-        
-        _logger.LogInformation("Aplicando watermark con fuente: {Font}, tamaño: {Size}px", fontUsed, fontSize);
-        
-        // Calcular posición: centro horizontal, posición vertical configurable
-        var textOptions = new RichTextOptions(font)
-        {
-            Origin = new PointF(0, 0),
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        
-        // Medir el texto para centrado
-        var textBounds = TextMeasurer.MeasureBounds(watermarkText, textOptions);
-        var x = image.Width / 2f;
-        var y = image.Height * _settings.WatermarkVerticalPosition; // Posición configurable
-        
-        // Aplicar marca de agua con sombra para mejor visibilidad
-        image.Mutate(ctx =>
-        {
-            // Sombra oscura para contraste (opacidad configurable)
-            ctx.DrawText(
-                new RichTextOptions(font)
-                {
-                    Origin = new PointF(x + 3, y + 3),
-                    HorizontalAlignment = HorizontalAlignment.Center
-                },
-                watermarkText,
-                Color.Black.WithAlpha(_settings.WatermarkShadowOpacity)
+            
+            // Crear una superficie para dibujar
+            using var surface = SKSurface.Create(new SKImageInfo(originalBitmap.Width, originalBitmap.Height));
+            var canvas = surface.Canvas;
+            
+            // Dibujar la imagen original
+            canvas.DrawBitmap(originalBitmap, 0, 0);
+            
+            // Calcular tamaño de fuente dinámico
+            var fontSize = Math.Max(originalBitmap.Width, originalBitmap.Height) / _settings.WatermarkFontSizeDivisor;
+            
+            // Configurar la fuente con estilo bold
+            using var typeface = SKTypeface.FromFamilyName(
+                "Arial",
+                SKFontStyleWeight.Bold,
+                SKFontStyleWidth.Normal,
+                SKFontStyleSlant.Upright
             );
             
-            // Texto principal en blanco semi-transparente (opacidad configurable)
-            ctx.DrawText(
-                new RichTextOptions(font)
-                {
-                    Origin = new PointF(x, y),
-                    HorizontalAlignment = HorizontalAlignment.Center
-                },
-                watermarkText,
-                Color.White.WithAlpha(_settings.WatermarkTextOpacity)
-            );
+            using var font = new SKFont(typeface, fontSize);
+            
+            // Medir el texto para centrarlo
+            var textBounds = new SKRect();
+            using var paint = new SKPaint(font);
+            paint.MeasureText(watermarkText, ref textBounds);
+            
+            // Calcular posición
+            var x = (originalBitmap.Width - textBounds.Width) / 2f;
+            var y = originalBitmap.Height * _settings.WatermarkVerticalPosition;
+            
+            _logger.LogInformation("Aplicando watermark - TextOpacity: {TextOpacity}, ShadowOpacity: {ShadowOpacity}", 
+                _settings.WatermarkTextOpacity, _settings.WatermarkShadowOpacity);
+            
+            // SOMBRA: Color negro con transparencia configurable
+            var shadowAlpha = (byte)(_settings.WatermarkShadowOpacity * 255);
+            using var shadowPaint = new SKPaint(font)
+            {
+                Color = new SKColor(0, 0, 0, shadowAlpha), // Negro con alpha
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill
+            };
+            
+            _logger.LogInformation("Sombra: RGBA(0, 0, 0, {Alpha})", shadowAlpha);
+            canvas.DrawText(watermarkText, x + 3, y + 3, shadowPaint);
+            
+            // TEXTO: Color blanco con transparencia configurable
+            var textAlpha = (byte)(_settings.WatermarkTextOpacity * 255);
+            using var textPaint = new SKPaint(font)
+            {
+                Color = new SKColor(255, 255, 255, textAlpha), // Blanco con alpha
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill
+            };
+            
+            _logger.LogInformation("Texto: RGBA(255, 255, 255, {Alpha})", textAlpha);
+            canvas.DrawText(watermarkText, x, y, textPaint);
+            
+            // Guardar con calidad máxima
+            var outputStream = new MemoryStream();
+            using var image = surface.Snapshot();
+            using var data = image.Encode(SKEncodedImageFormat.Jpeg, 100); // 100 = calidad máxima
+            data.SaveTo(outputStream);
+            
+            outputStream.Position = 0;
+            return (Stream)outputStream;
         });
-        
-        // Guardar en el MISMO FORMATO que la original con CALIDAD MÁXIMA
-        var outputStream = new MemoryStream();
-        
-        // Determinar el encoder basado en el formato original
-        var formatName = imageInfo?.Metadata?.DecodedImageFormat?.Name?.ToLowerInvariant();
-        
-        switch (formatName)
-        {
-            case "jpeg":
-            case "jpg":
-                // JPEG con calidad máxima (100 = sin pérdida visible)
-                var jpegEncoder = new JpegEncoder
-                {
-                    Quality = 100 // Calidad máxima (1-100)
-                };
-                await image.SaveAsJpegAsync(outputStream, jpegEncoder);
-                break;
-                
-            case "png":
-                // PNG sin pérdida (compresión lossless)
-                var pngEncoder = new PngEncoder
-                {
-                    CompressionLevel = PngCompressionLevel.BestCompression
-                };
-                await image.SaveAsPngAsync(outputStream, pngEncoder);
-                break;
-                
-            default:
-                // Para otros formatos (GIF, WEBP, BMP), usar JPEG calidad máxima como fallback
-                var defaultEncoder = new JpegEncoder { Quality = 100 };
-                await image.SaveAsJpegAsync(outputStream, defaultEncoder);
-                break;
-        }
-        
-        outputStream.Position = 0;
-        
-        return outputStream;
     }
 }
