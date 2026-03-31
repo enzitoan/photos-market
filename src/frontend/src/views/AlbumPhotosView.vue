@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col">
+  <div class="min-h-screen flex flex-col" @contextmenu.prevent="handleRightClick">
     <NavBar />
     
     <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
@@ -154,24 +154,42 @@ function navigateToPhoto(newIndex) {
   }
 }
 
-// Prevenir captura de pantalla y clic derecho
-function preventScreenCapture(e) {
-  // Prevenir PrintScreen, Ctrl+P, Cmd+P
-  if (
-    e.key === 'PrintScreen' ||
-    (e.ctrlKey && e.key === 'p') ||
-    (e.metaKey && e.key === 'p')
-  ) {
-    e.preventDefault()
-    toast.warning('La captura de pantalla está deshabilitada en esta sección')
-    return false
-  }
+// Security: Prevent right-click context menu
+function handleRightClick() {
+  toast.warning('Clic derecho deshabilitado para proteger las imágenes')
 }
 
-function preventContextMenu(e) {
-  e.preventDefault()
-  toast.warning('El clic derecho está deshabilitado en esta sección')
-  return false
+// Security: Prevent screenshot keyboard shortcuts and printing
+function handleKeyDown(event) {
+  // PrintScreen key
+  if (event.key === 'PrintScreen') {
+    event.preventDefault()
+    toast.warning('Las capturas de pantalla están deshabilitadas en esta página')
+    return
+  }
+  
+  // Windows: Win + Shift + S (Snipping Tool)
+  // Mac: Cmd + Shift + 3/4/5 (Screenshot shortcuts)
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey) {
+    if (['s', '3', '4', '5'].includes(event.key.toLowerCase())) {
+      event.preventDefault()
+      toast.warning('Las capturas de pantalla están deshabilitadas en esta página')
+      return
+    }
+  }
+  
+  // Windows: Alt + PrintScreen
+  if (event.altKey && event.key === 'PrintScreen') {
+    event.preventDefault()
+    toast.warning('Las capturas de pantalla están deshabilitadas en esta página')
+    return
+  }
+  
+  // Prevent printing: Ctrl+P, Cmd+P
+  if ((event.ctrlKey || event.metaKey) && event.key === 'p') {
+    event.preventDefault()
+    toast.warning('La impresión está deshabilitada en esta página')
+  }
 }
 
 onMounted(async () => {
@@ -180,16 +198,39 @@ onMounted(async () => {
   // Cargar fotos del álbum
   loadPhotos()
   
-  // Agregar event listeners para bloquear captura de pantalla y clic derecho
-  document.addEventListener('keyup', preventScreenCapture)
-  document.addEventListener('keydown', preventScreenCapture)
-  document.addEventListener('contextmenu', preventContextMenu)
+  // Add keyboard event listener for screenshot and print prevention
+  window.addEventListener('keyup', handleKeyDown)
+  window.addEventListener('keydown', handleKeyDown)
 })
 
 onBeforeUnmount(() => {
-  // Remover event listeners al desmontar el componente
-  document.removeEventListener('keyup', preventScreenCapture)
-  document.removeEventListener('keydown', preventScreenCapture)
-  document.removeEventListener('contextmenu', preventContextMenu)
+  // Clean up event listeners
+  window.removeEventListener('keyup', handleKeyDown)
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
+
+<style scoped>
+/* Prevent text/image selection */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Additional protection against dragging */
+img {
+  pointer-events: auto;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* Prevent text selection on the entire page */
+* {
+  -webkit-touch-callout: none;
+}
+</style>

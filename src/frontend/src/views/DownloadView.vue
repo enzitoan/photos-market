@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex flex-col">
+  <div class="min-h-screen flex flex-col" @contextmenu.prevent="handleRightClick">
     <NavBar />
     
     <main class="flex-1 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -68,8 +68,11 @@
                 <img 
                   :src="photo.thumbnailUrl" 
                   :alt="photo.filename"
-                  class="w-full h-full object-cover"
+                  class="w-full h-full object-cover select-none"
                   loading="lazy"
+                  draggable="false"
+                  @contextmenu.prevent
+                  @dragstart.prevent
                 />
                 <!-- Overlay on hover -->
                 <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all flex items-center justify-center">
@@ -131,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import NavBar from '@/components/NavBar.vue'
@@ -192,7 +195,80 @@ function formatDate(dateString) {
   })
 }
 
+// Security: Prevent right-click context menu
+function handleRightClick() {
+  toast.warning('Clic derecho deshabilitado para proteger las imágenes')
+}
+
+// Security: Prevent screenshot keyboard shortcuts and printing
+function handleKeyDown(event) {
+  // PrintScreen key
+  if (event.key === 'PrintScreen') {
+    event.preventDefault()
+    toast.warning('Las capturas de pantalla están deshabilitadas en esta página')
+    return
+  }
+  
+  // Windows: Win + Shift + S (Snipping Tool)
+  // Mac: Cmd + Shift + 3/4/5 (Screenshot shortcuts)
+  if ((event.metaKey || event.ctrlKey) && event.shiftKey) {
+    if (['s', '3', '4', '5'].includes(event.key.toLowerCase())) {
+      event.preventDefault()
+      toast.warning('Las capturas de pantalla están deshabilitadas en esta página')
+      return
+    }
+  }
+  
+  // Windows: Alt + PrintScreen
+  if (event.altKey && event.key === 'PrintScreen') {
+    event.preventDefault()
+    toast.warning('Las capturas de pantalla están deshabilitadas en esta página')
+    return
+  }
+  
+  // Prevent printing: Ctrl+P, Cmd+P
+  if ((event.ctrlKey || event.metaKey) && event.key === 'p') {
+    event.preventDefault()
+    toast.warning('La impresión está deshabilitada en esta página')
+  }
+}
+
 onMounted(() => {
   loadDownloadInfo()
+  
+  // Add keyboard event listener for screenshot prevention
+  window.addEventListener('keyup', handleKeyDown)
+  window.addEventListener('keydown', handleKeyDown)
+})
+
+onBeforeUnmount(() => {
+  // Clean up event listeners
+  window.removeEventListener('keyup', handleKeyDown)
+  window.removeEventListener('keydown', handleKeyDown)
 })
 </script>
+
+<style scoped>
+/* Prevent text/image selection */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Additional protection against dragging */
+img {
+  pointer-events: auto;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+}
+
+/* Prevent text selection on the entire page */
+* {
+  -webkit-touch-callout: none;
+}
+</style>

@@ -35,7 +35,10 @@
             <img
               :src="imageUrl"
               :alt="photo.filename"
-              class="w-full h-auto max-h-[80vh] object-contain"
+              class="w-full h-auto max-h-[80vh] object-contain select-none"
+              draggable="false"
+              @contextmenu.prevent
+              @dragstart.prevent
               @error="handleImageError"
             />
             
@@ -331,5 +334,23 @@ onBeforeUnmount(() => {
   .photo-modal:hover .carousel-btn {
     opacity: 1;
   }
+}
+
+/* Prevent text/image selection */
+.select-none {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Additional protection against dragging */
+img {
+  pointer-events: auto;
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
 }
 </style>
