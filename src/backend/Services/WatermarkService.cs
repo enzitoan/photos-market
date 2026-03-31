@@ -2,11 +2,10 @@ using Microsoft.Extensions.Options;
 using PhotosMarket.API.Configuration;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
-using SixLabors.ImageSharp.Drawing.Processing;
-using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 using SixLabors.Fonts;
+using SixLabors.ImageSharp.Drawing.Processing;
 
 namespace PhotosMarket.API.Services;
 
@@ -53,37 +52,59 @@ public class WatermarkService : IWatermarkService
         // Usar configuración para ajustar el tamaño (menor divisor = marca más grande)
         var fontSize = Math.Max(image.Width, image.Height) / _settings.WatermarkFontSizeDivisor;
         
-        // Crear una fuente - usar fuentes disponibles en Linux
-        // Orden de prioridad: Liberation Sans (fonts-liberation) -> DejaVu Sans -> Arial -> cualquier Sans
+        // Crear una fuente - priorizar Montserrat para marca consistente
+        // Orden de prioridad: Montserrat -> Montserrat Bold -> Liberation Sans -> DejaVu Sans -> Arial -> cualquier Sans
         Font font;
         string fontUsed = "Unknown";
         try
         {
-            font = SystemFonts.CreateFont("Liberation Sans", fontSize, FontStyle.Bold);
-            fontUsed = "Liberation Sans";
+            font = SystemFonts.CreateFont("Montserrat", fontSize, FontStyle.Bold);
+            fontUsed = "Montserrat";
         }
         catch
         {
             try
             {
-                font = SystemFonts.CreateFont("DejaVu Sans", fontSize, FontStyle.Bold);
-                fontUsed = "DejaVu Sans";
+                // Intentar variante explícita de Montserrat Bold
+                font = SystemFonts.CreateFont("Montserrat Bold", fontSize, FontStyle.Bold);
+                fontUsed = "Montserrat Bold";
             }
             catch
             {
                 try
                 {
-                    font = SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
-                    fontUsed = "Arial";
+                    font = SystemFonts.CreateFont("Liberation Sans", fontSize, FontStyle.Bold);
+                    fontUsed = "Liberation Sans";
                 }
                 catch
                 {
-                    // Fallback: usar la primera fuente Sans disponible
-                    var fontFamily = SystemFonts.Families.FirstOrDefault(f => 
-                        f.Name.Contains("Sans", StringComparison.OrdinalIgnoreCase)) 
-                        ?? SystemFonts.Families.First();
-                    font = fontFamily.CreateFont(fontSize, FontStyle.Bold);
-                    fontUsed = fontFamily.Name;
+                    try
+                    {
+                        font = SystemFonts.CreateFont("DejaVu Sans", fontSize, FontStyle.Bold);
+                        fontUsed = "DejaVu Sans";
+                    }
+                    catch
+                    {
+                        try
+                        {
+                            font = SystemFonts.CreateFont("Arial", fontSize, FontStyle.Bold);
+                            fontUsed = "Arial";
+                        }
+                        catch
+                        {
+                            // Fallback: usar la primera fuente Sans disponible o cualquier fuente
+                            var sansFont = SystemFonts.Families.FirstOrDefault(f => 
+                                f.Name.Contains("Sans", StringComparison.OrdinalIgnoreCase));
+                            
+                            // Si hay una fuente Sans, usarla; si no, usar la primera disponible
+                            var fontFamily = !string.IsNullOrEmpty(sansFont.Name) 
+                                ? sansFont 
+                                : SystemFonts.Families.First();
+                            
+                            font = fontFamily.CreateFont(fontSize, FontStyle.Bold);
+                            fontUsed = fontFamily.Name;
+                        }
+                    }
                 }
             }
         }

@@ -24,7 +24,17 @@ RUN apt-get update && apt-get install -y \
     libc6-dev \
     fontconfig \
     fonts-liberation \
+    wget \
+    unzip \
     && rm -rf /var/lib/apt/lists/*
+
+# Descargar e instalar la fuente Montserrat desde Google Fonts
+RUN mkdir -p /usr/share/fonts/truetype/montserrat && \
+    wget -q https://github.com/JulietaUla/Montserrat/archive/refs/heads/master.zip -O /tmp/montserrat.zip && \
+    unzip -q /tmp/montserrat.zip -d /tmp && \
+    cp /tmp/Montserrat-master/fonts/ttf/*.ttf /usr/share/fonts/truetype/montserrat/ && \
+    fc-cache -f -v && \
+    rm -rf /tmp/montserrat.zip /tmp/Montserrat-master
 
 WORKDIR /app
 EXPOSE 8080
