@@ -10,6 +10,7 @@ public interface IOrderRepository
 {
     Task<Order> CreateAsync(Order order);
     Task<Order?> GetByIdAsync(string id, string userId);
+    Task<Order?> GetByIdAsync(string id);
     Task<List<Order>> GetByUserIdAsync(string userId);
     Task<List<Order>> GetAllAsync();
     Task<Order> UpdateAsync(Order order);
@@ -42,6 +43,22 @@ public class OrderRepository : IOrderRepository
         {
             return null;
         }
+    }
+
+    public async Task<Order?> GetByIdAsync(string id)
+    {
+        var query = new QueryDefinition("SELECT * FROM c WHERE c.id = @id")
+            .WithParameter("@id", id);
+
+        var iterator = _container.GetItemQueryIterator<Order>(query);
+        
+        if (iterator.HasMoreResults)
+        {
+            var response = await iterator.ReadNextAsync();
+            return response.FirstOrDefault();
+        }
+
+        return null;
     }
 
     public async Task<List<Order>> GetByUserIdAsync(string userId)

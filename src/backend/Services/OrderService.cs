@@ -12,7 +12,7 @@ public interface IOrderService
     Task<Order?> GetOrderByIdAsync(string orderId, string userId);
     Task<List<Order>> GetUserOrdersAsync(string userId);
     Task<List<Order>> GetAllOrdersAsync();
-    Task<Order> ConfirmPaymentAsync(string orderId, string userId, string paymentReference);
+    Task<Order> ConfirmPaymentAsync(string orderId, string userId, string paymentReference, bool isAdmin = false);
     Task<Order> CompleteOrderAsync(string orderId);
     Task<Order> CancelOrderAsync(string orderId, string userId, bool isAdmin = false);
     Task<DownloadLink> GenerateDownloadLinkAsync(Order order);
@@ -121,9 +121,20 @@ public class OrderService : IOrderService
         return await _orderRepository.GetAllAsync();
     }
 
-    public async Task<Order> ConfirmPaymentAsync(string orderId, string userId, string paymentReference)
+    public async Task<Order> ConfirmPaymentAsync(string orderId, string userId, string paymentReference, bool isAdmin = false)
     {
-        var order = await _orderRepository.GetByIdAsync(orderId, userId);
+        Order? order;
+        
+        if (isAdmin)
+        {
+            // Admin can confirm payment for any order
+            order = await _orderRepository.GetByIdAsync(orderId);
+        }
+        else
+        {
+            // Regular user can only confirm their own orders
+            order = await _orderRepository.GetByIdAsync(orderId, userId);
+        }
         
         if (order == null)
             throw new InvalidOperationException("Order not found");

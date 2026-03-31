@@ -28,6 +28,14 @@ export default {
     return apiClient.post(`/orders/${orderId}/cancel`)
   },
   
+  async getOrderDownloadLink(orderId) {
+    return apiClient.get(`/orders/${orderId}/download-link`)
+  },
+  
+  async regenerateDownloadLink(orderId) {
+    return apiClient.post(`/orders/${orderId}/regenerate-download-link`)
+  },
+  
   // Admin endpoints
   async getAllOrders() {
     const response = await apiClient.get('/orders/admin/all')

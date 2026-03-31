@@ -22,6 +22,15 @@ public class InMemoryOrderRepository : IOrderRepository
         return Task.FromResult<Order?>(null);
     }
 
+    public Task<Order?> GetByIdAsync(string id)
+    {
+        if (_orders.TryGetValue(id, out var order))
+        {
+            return Task.FromResult<Order?>(order);
+        }
+        return Task.FromResult<Order?>(null);
+    }
+
     public Task<List<Order>> GetByUserIdAsync(string userId)
     {
         var orders = _orders.Values

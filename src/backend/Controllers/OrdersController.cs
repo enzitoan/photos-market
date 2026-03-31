@@ -2,6 +2,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PhotosMarket.API.Services;
 using PhotosMarket.API.DTOs;
+using PhotosMarket.API.Models;
+using PhotosMarket.API.Repositories;
+using PhotosMarket.API.Configuration;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 
 namespace PhotosMarket.API.Controllers;
@@ -12,13 +16,19 @@ namespace PhotosMarket.API.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
+    private readonly IDownloadLinkRepository _downloadLinkRepository;
+    private readonly ApplicationSettings _appSettings;
     private readonly ILogger<OrdersController> _logger;
 
     public OrdersController(
         IOrderService orderService,
+        IDownloadLinkRepository downloadLinkRepository,
+        IOptions<ApplicationSettings> appSettings,
         ILogger<OrdersController> logger)
     {
         _orderService = orderService;
+        _downloadLinkRepository = downloadLinkRepository;
+        _appSettings = appSettings.Value;
         _logger = logger;
     }
 
@@ -54,6 +64,9 @@ public class OrdersController : ControllerBase
                     AlbumId = p.AlbumId,
                     AlbumTitle = p.AlbumTitle
                 }).ToList(),
+                Subtotal = order.Subtotal,
+                DiscountPercentage = order.DiscountPercentage,
+                DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
@@ -105,6 +118,9 @@ public class OrdersController : ControllerBase
                     AlbumId = p.AlbumId,
                     AlbumTitle = p.AlbumTitle
                 }).ToList(),
+                Subtotal = order.Subtotal,
+                DiscountPercentage = order.DiscountPercentage,
+                DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
@@ -160,6 +176,9 @@ public class OrdersController : ControllerBase
                     AlbumId = p.AlbumId,
                     AlbumTitle = p.AlbumTitle
                 }).ToList(),
+                Subtotal = order.Subtotal,
+                DiscountPercentage = order.DiscountPercentage,
+                DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
@@ -195,7 +214,8 @@ public class OrdersController : ControllerBase
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            var order = await _orderService.ConfirmPaymentAsync(orderId, userId, request.PaymentReference);
+            var isAdmin = User.IsInRole("Admin");
+            var order = await _orderService.ConfirmPaymentAsync(orderId, userId, request.PaymentReference, isAdmin);
 
             var orderDto = new OrderDto
             {
@@ -211,6 +231,9 @@ public class OrdersController : ControllerBase
                     AlbumId = p.AlbumId,
                     AlbumTitle = p.AlbumTitle
                 }).ToList(),
+                Subtotal = order.Subtotal,
+                DiscountPercentage = order.DiscountPercentage,
+                DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
@@ -260,6 +283,9 @@ public class OrdersController : ControllerBase
                     AlbumId = p.AlbumId,
                     AlbumTitle = p.AlbumTitle
                 }).ToList(),
+                Subtotal = order.Subtotal,
+                DiscountPercentage = order.DiscountPercentage,
+                DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
@@ -314,6 +340,9 @@ public class OrdersController : ControllerBase
                     AlbumId = p.AlbumId,
                     AlbumTitle = p.AlbumTitle
                 }).ToList(),
+                Subtotal = order.Subtotal,
+                DiscountPercentage = order.DiscountPercentage,
+                DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
@@ -363,6 +392,9 @@ public class OrdersController : ControllerBase
                     AlbumId = p.AlbumId,
                     AlbumTitle = p.AlbumTitle
                 }).ToList(),
+                Subtotal = order.Subtotal,
+                DiscountPercentage = order.DiscountPercentage,
+                DiscountAmount = order.DiscountAmount,
                 TotalAmount = order.TotalAmount,
                 Currency = order.Currency,
                 Status = order.Status.ToString(),
@@ -384,6 +416,167 @@ public class OrdersController : ControllerBase
             {
                 Success = false,
                 Message = "Failed to fetch orders",
+                Errors = new List<string> { ex.Message }
+            });
+        }
+    }
+
+    [HttpGet("{orderId}/download-link")]
+    public async Task<ActionResult<ApiResponse<DownloadLinkDto>>> GetOrderDownloadLink(string orderId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            // Verificar que el pedido pertenezca al usuario
+            var order = await _orderService.GetOrderByIdAsync(orderId, userId);
+            if (order == null)
+                return NotFound(new ApiResponse<DownloadLinkDto>
+                {
+                    Success = false,
+                    Message = "Order not found"
+                });
+
+            // Buscar el link de descarga
+            var downloadLink = await _downloadLinkRepository.GetByOrderIdAsync(orderId, userId);
+            
+            if (downloadLink == null)
+            {
+                return NotFound(new ApiResponse<DownloadLinkDto>
+                {
+                    Success = false,
+                    Message = "Download link not found for this order"
+                });
+            }
+
+            // Verificar si el link está expirado
+            if (downloadLink.IsExpired)
+            {
+                return Ok(new ApiResponse<DownloadLinkDto>
+                {
+                    Success = false,
+                    Message = "Download link has expired",
+                    Data = new DownloadLinkDto
+                    {
+                        Token = downloadLink.Token,
+                        ExpiresAt = downloadLink.ExpiresAt,
+                        IsExpired = true
+                    }
+                });
+            }
+
+            // Generar URL absoluta para descarga
+            var baseUrl = !string.IsNullOrEmpty(_appSettings.BaseUrl) 
+                ? _appSettings.BaseUrl 
+                : $"{Request.Scheme}://{Request.Host}";
+            var downloadUrl = $"{baseUrl}/api/download/{downloadLink.Token}";
+
+            var downloadLinkDto = new DownloadLinkDto
+            {
+                Token = downloadLink.Token,
+                DownloadUrl = downloadUrl,
+                ExpiresAt = downloadLink.ExpiresAt,
+                IsExpired = downloadLink.IsExpired,
+                OrderNumber = order.Id.Substring(0, 8).ToUpper(),
+                CustomerName = order.UserName,
+                CustomerEmail = order.UserEmail
+            };
+
+            return Ok(new ApiResponse<DownloadLinkDto>
+            {
+                Success = true,
+                Data = downloadLinkDto,
+                Message = "Download link retrieved successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching download link for order {OrderId}", orderId);
+            return BadRequest(new ApiResponse<DownloadLinkDto>
+            {
+                Success = false,
+                Message = "Failed to fetch download link",
+                Errors = new List<string> { ex.Message }
+            });
+        }
+    }
+
+    [HttpPost("{orderId}/regenerate-download-link")]
+    public async Task<ActionResult<ApiResponse<DownloadLinkDto>>> RegenerateDownloadLink(string orderId)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+                return Unauthorized();
+
+            var isAdmin = User.IsInRole("Admin");
+            
+            // Verificar que el pedido pertenezca al usuario o sea admin
+            Order? order;
+            if (isAdmin)
+            {
+                var allOrders = await _orderService.GetAllOrdersAsync();
+                order = allOrders.FirstOrDefault(o => o.Id == orderId);
+            }
+            else
+            {
+                order = await _orderService.GetOrderByIdAsync(orderId, userId);
+            }
+            
+            if (order == null)
+                return NotFound(new ApiResponse<DownloadLinkDto>
+                {
+                    Success = false,
+                    Message = "Order not found"
+                });
+
+            // Verificar que el pedido esté completado
+            if (order.Status != OrderStatus.Completed)
+            {
+                return BadRequest(new ApiResponse<DownloadLinkDto>
+                {
+                    Success = false,
+                    Message = "Order must be completed to generate download link"
+                });
+            }
+
+            // Generar nuevo link de descarga
+            var downloadLink = await _orderService.GenerateDownloadLinkAsync(order);
+
+            // Generar URL absoluta
+            var baseUrl = !string.IsNullOrEmpty(_appSettings.BaseUrl) 
+                ? _appSettings.BaseUrl 
+                : $"{Request.Scheme}://{Request.Host}";
+            var downloadUrl = $"{baseUrl}/api/download/{downloadLink.Token}";
+
+            var downloadLinkDto = new DownloadLinkDto
+            {
+                Token = downloadLink.Token,
+                DownloadUrl = downloadUrl,
+                ExpiresAt = downloadLink.ExpiresAt,
+                IsExpired = downloadLink.IsExpired,
+                OrderNumber = order.Id.Substring(0, 8).ToUpper(),
+                CustomerName = order.UserName,
+                CustomerEmail = order.UserEmail
+            };
+
+            return Ok(new ApiResponse<DownloadLinkDto>
+            {
+                Success = true,
+                Data = downloadLinkDto,
+                Message = "Download link generated successfully"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error regenerating download link for order {OrderId}", orderId);
+            return BadRequest(new ApiResponse<DownloadLinkDto>
+            {
+                Success = false,
+                Message = "Failed to regenerate download link",
                 Errors = new List<string> { ex.Message }
             });
         }

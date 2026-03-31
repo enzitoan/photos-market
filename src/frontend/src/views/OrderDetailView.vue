@@ -132,10 +132,40 @@
           </div>
           
           <div v-else-if="order.status === 'Completed'" class="mt-6 pt-6 border-t">
-            <div class="bg-green-50 p-4 rounded-lg">
+            <div class="bg-green-50 p-4 rounded-lg mb-4">
               <p class="text-green-800 font-medium mb-2">✓ Pedido Completado</p>
               <p class="text-sm text-green-700">
-                Tu pedido ha sido procesado exitosamente. Revisa tu email para el enlace de descarga.
+                Tu pedido ha sido procesado exitosamente.
+              </p>
+            </div>
+            
+            <!-- Botón de descarga si el link está activo -->
+            <div v-if="downloadLink && !downloadLink.isExpired" class="mt-4">
+              <router-link 
+                :to="`/download/${downloadLink.token}`"
+                class="inline-flex items-center justify-center px-6 py-3 btn btn-primary"
+              >
+                <span class="mr-2">⬇</span>
+                <span>Descargar Fotos</span>
+              </router-link>
+              <p class="text-sm text-gray-600 mt-2">
+                Enlace válido hasta el {{ formatDate(downloadLink.expiresAt) }}
+              </p>
+            </div>
+            
+            <!-- Mensaje si el link expiró -->
+            <div v-else-if="downloadLink && downloadLink.isExpired" class="mt-4 bg-yellow-50 p-4 rounded-lg">
+              <p class="text-yellow-800 font-medium mb-1">⚠️ Enlace Expirado</p>
+              <p class="text-sm text-yellow-700">
+                El enlace de descarga ha expirado. Por favor, contacta al soporte para obtener un nuevo enlace.
+              </p>
+            </div>
+            
+            <!-- Mensaje si aún no hay link disponible -->
+            <div v-else class="mt-4 bg-blue-50 p-4 rounded-lg">
+              <p class="text-blue-800 font-medium mb-1">📧 Enlace de Descarga</p>
+              <p class="text-sm text-blue-700">
+                El enlace de descarga ha sido enviado a tu correo electrónico. Si no lo recibes en unos minutos, revisa tu carpeta de spam o contacta al soporte.
               </p>
             </div>
           </div>
@@ -150,28 +180,40 @@
           </div>
         </div>
         
-        <!-- Galería de fotos -->
+        <!-- Listado de fotos -->
         <div class="card">
           <h2 class="text-2xl font-semibold mb-4">Fotos del Pedido ({{ order.photos.length }})</h2>
           
-          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div 
-              v-for="(photo, index) in order.photos" 
-              :key="photo.photoId"
-              class="relative aspect-square group"
-            >
-              <img 
-                :src="getPhotoUrl(photo)"
-                :alt="photo.filename"
-                class="w-full h-full object-cover rounded-lg cursor-pointer transition-transform group-hover:scale-105"
-                @click="openLightbox(index)"
-                @error="handleImageError($event, photo)"
-              >
-              <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                <p class="truncate">{{ photo.filename }}</p>
-                <p v-if="photo.albumTitle" class="truncate text-gray-300">📁 {{ photo.albumTitle }}</p>
-              </div>
-            </div>
+          <div class="overflow-x-auto">
+            <table class="w-full">
+              <thead class="bg-gray-50 border-b">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre del Álbum</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nombre de la Foto</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr 
+                  v-for="(photo, index) in order.photos" 
+                  :key="photo.photoId"
+                  class="hover:bg-gray-50 transition-colors"
+                >
+                  <td class="px-4 py-3 text-sm text-gray-500">
+                    {{ index + 1 }}
+                  </td>
+                  <td class="px-4 py-3 text-sm">
+                    <div class="flex items-center">
+                      <span class="mr-2">📁</span>
+                      <span class="font-medium text-gray-900">{{ photo.albumTitle || 'Sin álbum' }}</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 text-sm text-gray-700">
+                    {{ photo.filename }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -275,6 +317,7 @@ const toast = useToast()
 const loading = ref(true)
 const error = ref(null)
 const order = ref(null)
+const downloadLink = ref(null)
 const showPaymentDialog = ref(false)
 const paymentReference = ref('')
 const isConfirming = ref(false)
@@ -287,12 +330,33 @@ async function loadOrderDetails() {
     const orderId = route.params.id
     const response = await ordersService.getOrder(orderId)
     order.value = response.data
+    
+    // Si el pedido está completado, intentar obtener el link de descarga
+    if (order.value.status === 'Completed') {
+      await loadDownloadLink()
+    }
   } catch (err) {
     console.error('Error loading order details:', err)
     error.value = 'Error al cargar los detalles del pedido. Intenta nuevamente.'
     toast.error('Error al cargar el pedido')
   } finally {
     loading.value = false
+  }
+}
+
+async function loadDownloadLink() {
+  try {
+    const orderId = route.params.id
+    const response = await ordersService.getOrderDownloadLink(orderId)
+    
+    if (response && response.success && response.data) {
+      downloadLink.value = response.data
+      console.log('✅ Download link loaded successfully:', downloadLink.value)
+    } else {
+      console.log('⚠️ No download link available')
+    }
+  } catch (err) {
+    console.log('❌ Download link not available:', err.response?.data?.message || err.message)
   }
 }
 
