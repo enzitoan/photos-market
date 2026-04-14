@@ -27,6 +27,9 @@
         />
       </div>
     </main>
+
+    <!-- Floating Cart Button -->
+    <FloatingCartButton />
   </div>
 </template>
 
@@ -36,6 +39,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import NavBar from '@/components/NavBar.vue'
 import AlbumCard from '@/components/AlbumCard.vue'
+import FloatingCartButton from '@/components/FloatingCartButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import photosService from '@/services/photosService'
 

@@ -460,9 +460,9 @@ npm run dev
 5. **Moneda**: Sistema configurado para pesos chilenos (CLP) con precio de $1000 por foto.
 
 ## 🔜 Mejoras Futuras Sugeridas
-
+- [x] Feat: Botón flotante carrito de compra
+- [x] Fix: Toast notificación en modo mobile se quedan pegados.
 - [ ] Implementar pasarela de pago (Stripe, PayPal, Mercado Pago)
-- [ ] Sistema de marca de agua en servidor con ImageSharp
 - [ ] Panel de analytics y reportes
 - [ ] Notificaciones push en tiempo real
 - [ ] Sistema de cupones y descuentos

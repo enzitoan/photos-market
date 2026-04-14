@@ -69,6 +69,9 @@
       @close="closePhotoModal"
       @navigate="navigateToPhoto"
     />
+
+    <!-- Floating Cart Button -->
+    <FloatingCartButton />
   </div>
 </template>
 
@@ -80,6 +83,7 @@ import { useCartStore } from '@/stores/cart'
 import NavBar from '@/components/NavBar.vue'
 import PhotoCard from '@/components/PhotoCard.vue'
 import PhotoModal from '@/components/PhotoModal.vue'
+import FloatingCartButton from '@/components/FloatingCartButton.vue'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import photosService from '@/services/photosService'
 

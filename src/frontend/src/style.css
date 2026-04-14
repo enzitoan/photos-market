@@ -47,3 +47,26 @@
     text-wrap: balance;
   }
 }
+
+/* Mobile-specific toast styles */
+.vue-toast-mobile {
+  @apply max-w-[calc(100vw-2rem)] mx-4;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.vue-toast-body-mobile {
+  padding: 12px 16px;
+}
+
+@media (max-width: 640px) {
+  .vue-toast-mobile {
+    @apply bottom-4 top-auto;
+    margin-bottom: 1rem;
+  }
+  
+  /* Ensure toasts don't overlap with floating cart button */
+  .Vue-Toastification__container--top-right .vue-toast-mobile {
+    margin-bottom: 5rem;
+  }
+}
