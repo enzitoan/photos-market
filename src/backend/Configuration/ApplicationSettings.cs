@@ -7,7 +7,7 @@ public class ApplicationSettings
     public int DownloadLinkExpirationHours { get; set; } = 72;
     public string WatermarkText { get; set; } = string.Empty;
     public string DefaultWatermarkText { get; set; } = "@egan.fotografia";
-    public decimal PhotoPricePerUnit { get; set; } = 1000m;
+    public decimal PhotoPrice { get; set; } = 1000m;
     public string Currency { get; set; } = "CLP";
     
     // Discount Configuration

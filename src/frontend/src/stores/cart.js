@@ -8,7 +8,7 @@ const API_URL = getApiUrl()
 
 export const useCartStore = defineStore('cart', () => {
   const items = ref(JSON.parse(localStorage.getItem('cart')) || [])
-  const pricePerPhoto = ref(5.00) // Default inicial
+  const pricePerPhoto = ref(1000.00) // Default inicial
   const currency = ref('CLP') // Default inicial
   const configLoaded = ref(false)
   const bulkDiscountMinPhotos = ref(5) // Mínimo de fotos para descuento
@@ -55,7 +55,7 @@ export const useCartStore = defineStore('cart', () => {
       
       if (response.data?.success && response.data?.data) {
         // El backend serializa en camelCase por defecto
-        const price = response.data.data.photoPrice || response.data.data.PhotoPrice || 5.00
+        const price = response.data.data.photoPrice || response.data.data.PhotoPrice || 1000.00
         const curr = response.data.data.currency || response.data.data.Currency || 'CLP'
         const minPhotos = response.data.data.bulkDiscountMinPhotos || response.data.data.BulkDiscountMinPhotos || 5
         const discountPct = response.data.data.bulkDiscountPercentage || response.data.data.BulkDiscountPercentage || 20

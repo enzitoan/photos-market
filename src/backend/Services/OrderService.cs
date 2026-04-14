@@ -47,7 +47,7 @@ public class OrderService : IOrderService
     {
         // Get current photographer settings for price and currency
         var settings = await _photographerSettingsRepository.GetSettingsAsync();
-        var photoPrice = settings?.PhotoPrice ?? _appSettings.PhotoPricePerUnit;
+        var photoPrice = settings?.PhotoPrice ?? _appSettings.PhotoPrice;
         var currency = settings?.Currency ?? _appSettings.Currency;
         var bulkDiscountMinPhotos = settings?.BulkDiscountMinPhotos ?? _appSettings.BulkDiscountMinPhotos;
         var bulkDiscountPercentage = settings?.BulkDiscountPercentage ?? _appSettings.BulkDiscountPercentage;
@@ -95,7 +95,7 @@ public class OrderService : IOrderService
         // Send awaiting payment email (non-blocking)
         try
         {
-            await _emailService.SendOrderAwaitingPaymentEmailAsync(order, userEmail);
+            await _emailService.SendOrderAwaitingPaymentEmailToAdminAsync(order, userEmail);
         }
         catch (Exception ex)
         {
@@ -151,7 +151,7 @@ public class OrderService : IOrderService
         // Send payment confirmed email (non-blocking)
         try
         {
-            await _emailService.SendPaymentConfirmedEmailAsync(order, order.UserEmail);
+            await _emailService.SendPaymentConfirmedEmailToAdminAsync(order, order.UserEmail);
         }
         catch (Exception ex)
         {
@@ -201,7 +201,7 @@ public class OrderService : IOrderService
         // Send payment confirmed email with download link (non-blocking)
         try
         {
-            await _emailService.SendPaymentConfirmedWithDownloadLinkAsync(orderToComplete, downloadLink, orderToComplete.UserEmail);
+            await _emailService.SendPaymentConfirmedWithDownloadLinkToAdminAsync(orderToComplete, downloadLink, orderToComplete.UserEmail);
             _logger.LogInformation("Payment confirmed email with download link sent for order {OrderId}", orderToComplete.Id);
         }
         catch (Exception ex)

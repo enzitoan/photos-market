@@ -26,7 +26,7 @@ public class PhotographerSettings
     public float WatermarkOpacity { get; set; } = 0.5f;
 
     [JsonProperty("photoPrice")]
-    public decimal PhotoPrice { get; set; } = 5.00m;
+    public decimal PhotoPrice { get; set; } = 1000.00m;
 
     [JsonProperty("currency")]
     public string Currency { get; set; } = "CLP";

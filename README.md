@@ -422,7 +422,7 @@ El archivo `src/backend/appsettings.json` contiene:
     "DownloadLinkExpirationHours": 72,
     "WatermarkText": "PhotosMarket © {YEAR}",
     "DefaultWatermarkText": "@egan.fotografia",  // Texto de marca de agua en descargas
-    "PhotoPricePerUnit": 1000,  // Precio en CLP
+    "PhotoPrice": 1000,  // Precio en CLP
     "Currency": "CLP",
     "BulkDiscountMinPhotos": 5,  // Mínimo de fotos para descuento
     "BulkDiscountPercentage": 20,  // Porcentaje de descuento
@@ -580,7 +580,7 @@ Puertos permitidos por defecto:
 ### **Precios**
 - Moneda: **Pesos Chilenos (CLP)**
 - Precio por foto: **$1.000 CLP**
-- Configurable en `Application.PhotoPricePerUnit`
+- Configurable en `Application.PhotoPrice`
 
 ### **Usuarios de Prueba**
 - **Admin**: `egan.fotografia.ph@gmail.com`

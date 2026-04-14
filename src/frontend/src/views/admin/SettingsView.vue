@@ -273,7 +273,7 @@ const watermarkText = ref('')
 const hasUnsavedChanges = ref(false)
 const saving = ref(false)
 
-const photoPrice = ref(5.00)
+const photoPrice = ref(1000.00)
 const currency = ref('CLP')
 const hasPriceChanges = ref(false)
 const savingPrice = ref(false)
@@ -302,7 +302,7 @@ async function loadPhotographerSettings() {
     
     if (response.success && response.data) {
       watermarkText.value = response.data.watermarkText || ''
-      photoPrice.value = response.data.photoPrice || 5.00
+      photoPrice.value = response.data.photoPrice || 1000.00
       currency.value = response.data.currency || 'CLP'
       bulkDiscountMinPhotos.value = response.data.bulkDiscountMinPhotos || 5
       bulkDiscountPercentage.value = response.data.bulkDiscountPercentage || 20

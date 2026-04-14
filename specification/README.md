@@ -342,7 +342,7 @@ PhotosMarket es una aplicación web completa que permite a los clientes comprar 
     "FrontendUrl": "http://localhost:3001",
     "DownloadLinkExpirationHours": 72,
     "WatermarkText": "PhotosMarket © {YEAR}",
-    "PhotoPricePerUnit": 1000,
+    "PhotoPrice": 1000,
     "Currency": "CLP"
   }
 }

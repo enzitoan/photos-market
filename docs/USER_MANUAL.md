@@ -87,7 +87,7 @@ Editar `src/backend/appsettings.json`:
     "FrontendUrl": "http://localhost:3001",
     "DownloadLinkExpirationHours": 72,
     "DefaultWatermarkText": "@egan.fotografia",
-    "PhotoPricePerUnit": 1000,
+    "PhotoPrice": 1000,
     "Currency": "CLP",
     "BulkDiscountMinPhotos": 5,
     "BulkDiscountPercentage": 20,
