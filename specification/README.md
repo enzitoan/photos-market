@@ -4,6 +4,23 @@
 
 PhotosMarket es una aplicación web completa que permite a los clientes comprar fotografías de alta resolución almacenadas en Google Drive del fotógrafo. La aplicación actúa como una galería intermedia entre el fotógrafo y sus clientes, proporcionando una interfaz moderna y segura para la visualización, selección y compra de fotografías.
 
+## 🚀 Actualizaciones Recientes
+
+### **Nuevas Características**
+- ✨ **Carrito flotante mejorado** - Botón flotante en dispositivos móviles con mejor experiencia de usuario
+- 🎨 **Protección mejorada de imágenes** - Deshabilitación de clic derecho, arrastrar y selección de texto en componentes de galería
+- 📥 **Gestión de enlaces de descarga** - Funcionalidad completa para generar y gestionar enlaces de descarga de órdenes completadas
+- 🖼️ **Marca de agua avanzada** - Soporte para orientación EXIF, mejor visualización y personalización de marca de agua
+- 📱 **Notificaciones mejoradas** - Mejor presentación de notificaciones en vista móvil
+- 💰 **Actualización de terminología** - Revisión de términos relacionados con precios en toda la aplicación
+- 📧 **Mejoras en emails** - Plantillas actualizadas para confirmación de pago y notificaciones de estado
+
+### **Mejoras Técnicas**
+- Carga asincrónica de credenciales de Google Drive
+- URLs de descarga con fallbacks y manejo mejorado de base URL del backend
+- Mejor gestión de flujos en el servicio de marca de agua
+- Integración con SkiaSharp para mejor procesamiento de imágenes
+
 ## 🏗️ Arquitectura del Sistema
 
 ### **Backend** (API REST)
@@ -211,33 +228,40 @@ PhotosMarket es una aplicación web completa que permite a los clientes comprar 
 ## 🔌 API Endpoints
 
 ### **Autenticación** (`/api/auth`)
-- `GET /google-login` - Obtener URL de autenticación Google
-- `POST /google-callback` - Callback OAuth 2.0
+- `GET /google-login` - Obtener URL de autenticación con Google
+- `POST /google-callback` - Callback OAuth 2.0 para clientes
+- `POST /photographer-google-callback` - Callback OAuth 2.0 para fotógrafos
+- `POST /admin-login` - Login de administrador
 - `GET /validate` - Validar token JWT actual
-- `POST /refresh` - Refrescar token JWT
-
-### **Álbumes** (`/api/albums`)
-- `GET /` - Listar todos los álbumes disponibles
-- `GET /{albumId}` - Obtener detalles de un álbum
-- `POST /{albumId}/toggle-block` - Bloquear/desbloquear álbum (Admin)
+- `POST /complete-registration` - Completar registro con datos adicionales
 
 ### **Fotos** (`/api/photos`)
-- `GET /albums` - Listar álbumes con fotos
+- `GET /config` - Obtener configuración pública del fotógrafo (sin autenticación)
+- `GET /albums` - Listar álbumes disponibles
+- `GET /albums/{albumId}` - Obtener detalle de un álbum específico
 - `GET /albums/{albumId}/photos` - Obtener fotos de un álbum
-- `GET /{mediaItemId}` - Obtener detalle de una foto
+- `GET /proxy/{fileId}` - Proxy de imágenes desde Google Drive (sin autenticación)
+
+### **Álbumes Administración** (`/api/admin/albums`)
+- `GET /` - Listar todos los álbumes y su configuración (Admin)
+- `POST /{googleAlbumId}/block` - Bloquear un álbum (Admin)
+- `GET /photographer-settings` - Obtener configuración del fotógrafo
 
 ### **Pedidos** (`/api/orders`)
 - `POST /` - Crear nuevo pedido
-- `GET /` - Listar pedidos del usuario
-- `GET /all` - Listar todos los pedidos (Admin)
-- `GET /{orderId}` - Obtener detalle de un pedido
-- `POST /{orderId}/confirm-payment` - Confirmar pago (Admin)
+- `GET /` - Listar pedidos del usuario autenticado
+- `GET /{orderId}` - Obtener detalle de un pedido específico
+- `POST /{orderId}/confirm-payment` - Confirmar pago recibido (Admin)
 - `POST /{orderId}/complete` - Marcar pedido como completado (Admin)
+- `POST /{orderId}/cancel` - Cancelar un pedido
+- `GET /{orderId}/download-link` - Obtener o crear link de descarga de una orden
+- `POST /{orderId}/regenerate-download-link` - Regenerar link de descarga
+- `GET /admin/all` - Listar todos los pedidos del sistema (Admin)
 
 ### **Descargas** (`/api/download`)
-- `GET /{token}` - Verificar validez del enlace
-- `GET /{token}/files` - Obtener URLs de descarga
-- `POST /{orderId}/generate` - Generar enlace de descarga (Admin)
+- `GET /{token}` - Verificar validez del link de descarga
+- `GET /{token}/files` - Obtener URLs de descarga de todas las fotos
+- `GET /{token}/photo/{photoId}` - Descargar foto individual con marca de agua
 
 ## 🎨 Vistas del Frontend
 
@@ -460,8 +484,6 @@ npm run dev
 5. **Moneda**: Sistema configurado para pesos chilenos (CLP) con precio de $1000 por foto.
 
 ## 🔜 Mejoras Futuras Sugeridas
-- [x] Feat: Botón flotante carrito de compra
-- [x] Fix: Toast notificación en modo mobile se quedan pegados.
 - [ ] Implementar pasarela de pago (Stripe, PayPal, Mercado Pago)
 - [ ] Panel de analytics y reportes
 - [ ] Notificaciones push en tiempo real
