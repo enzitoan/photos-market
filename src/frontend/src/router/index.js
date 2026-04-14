@@ -60,6 +60,11 @@ const router = createRouter({
       component: () => import('@/views/DownloadView.vue')
     },
     {
+      path: '/terms',
+      name: 'terms',
+      component: () => import('@/views/TermsConditionsView.vue')
+    },
+    {
       path: '/admin/login',
       name: 'admin-login',
       component: () => import('@/views/admin/AdminLoginView.vue')

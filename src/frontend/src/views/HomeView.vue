@@ -121,6 +121,9 @@
         <div class="text-center mb-4">
           <p>&copy; 2026 PhotosMarket. Todos los derechos reservados.</p>
         </div>
+        <div class="text-center">
+          <router-link to="/terms" class="text-sm text-gray-300 hover:text-white underline">Términos y Condiciones</router-link>
+        </div>
       </div>
     </footer>
   </div>
