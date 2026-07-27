@@ -4,6 +4,11 @@
     
     <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
       <h1 class="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Mis Pedidos</h1>
+
+      <div v-if="orders.some(order => order.status === 'AwaitingPayment')" class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+        <p class="font-semibold mb-2">💳 Instrucciones de pago</p>
+        <p>Si tu pedido está pendiente, realiza la transferencia a la cuenta indicada y confirma por DM o WhatsApp para recibir el enlace de descarga.</p>
+      </div>
       
       <LoadingSpinner v-if="loading" message="Cargando pedidos..." />
       

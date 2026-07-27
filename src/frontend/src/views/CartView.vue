@@ -106,13 +106,25 @@
             
             <div class="mt-4 p-3 bg-blue-50 rounded-md">
               <p class="text-xs sm:text-sm text-blue-800">
-                📧 <strong>Importante:</strong> Recibirás un email con:
+                📧 <strong>Importante:</strong> Para obtener tus fotos debes:
               </p>
-              <ul class="text-xs text-blue-700 mt-2 ml-5 list-disc space-y-1">
-                <li>Detalles de tu pedido</li>
-                <li>Instrucciones de pago</li>
-                <li>Enlace de descarga (una vez confirmado el pago)</li>
-              </ul>
+              <ol class="text-xs text-blue-700 mt-2 ml-5 list-decimal space-y-1">
+                <li>Finalizar el pedido.</li>
+                <li>
+                  Transferir el monto a la siguiente cuenta:
+                  <ul class="mt-1 ml-4 list-disc space-y-1">
+                    <li><strong>Enzo Gabriel Ahumada Núñez</strong></li>
+                    <li><strong>RUT:</strong> 16887619K</li>
+                    <li><strong>Mercado Pago</strong></li>
+                    <li><strong>Cuenta Vista</strong></li>
+                    <li><strong>Número de cuenta:</strong> 1044387122</li>
+                    <li><strong>Email:</strong> ahumada.enzo@gmail.com</li>
+                  </ul>
+                </li>
+                <li>Confirmar la transferencia por DM @egan.fotografia o al WhatsApp +56998977144.</li>
+                <li>Se te enviará el link de descarga una vez procesado el pago.</li>
+                <li>Ya puedes descargar tus fotos.</li>
+              </ol>
             </div>
           </div>
         </div>
