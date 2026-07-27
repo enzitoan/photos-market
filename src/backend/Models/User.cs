@@ -56,5 +56,8 @@ public class User
     [JsonProperty("isRegistrationComplete")]
     public bool IsRegistrationComplete { get; set; } = false;
 
+    [JsonProperty("passwordHash")]
+    public string? PasswordHash { get; set; }
+
     public bool IsAdmin => Role == UserRole.Admin || Role == UserRole.Photographer;
 }

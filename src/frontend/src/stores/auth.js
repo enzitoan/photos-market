@@ -57,6 +57,56 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function registerManual(payload) {
+    try {
+      const response = await authService.registerManual(payload)
+
+      if (response.success && response.data) {
+        user.value = {
+          userId: response.data.userId,
+          email: response.data.email,
+          name: response.data.name,
+          isAdmin: response.data.isAdmin || false
+        }
+        token.value = response.data.token
+
+        localStorage.setItem('token', response.data.token)
+        localStorage.setItem('user', JSON.stringify(user.value))
+
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Manual registration error:', error)
+      throw error
+    }
+  }
+
+  async function loginManual(payload) {
+    try {
+      const response = await authService.loginManual(payload)
+
+      if (response.success && response.data) {
+        user.value = {
+          userId: response.data.userId,
+          email: response.data.email,
+          name: response.data.name,
+          isAdmin: response.data.isAdmin || false
+        }
+        token.value = response.data.token
+
+        localStorage.setItem('token', response.data.token)
+        localStorage.setItem('user', JSON.stringify(user.value))
+
+        return true
+      }
+      return false
+    } catch (error) {
+      console.error('Manual login error:', error)
+      throw error
+    }
+  }
+
   async function completeRegistration(phone, idType, idNumber, birthDate) {
     try {
       const response = await authService.completeRegistration(phone, idType, idNumber, birthDate)
@@ -172,6 +222,8 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     photographerLogin,
     adminLogin,
+    registerManual,
+    loginManual,
     completeRegistration,
     logout,
     setGoogleAccessToken,

@@ -588,7 +588,7 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
-- [ ] **Datos de cuenta en correo** - Agregar datos de cuenta en correos y lugares donde se estime.
+- [ ] **Añadir registro manual sin cuenta de Google** - Implementar registro manual cuando no tengo cuenta de google.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.

@@ -12,6 +12,24 @@ public class AdminLoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
+public class ManualRegisterRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string ConfirmPassword { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string IdType { get; set; } = string.Empty;
+    public string IdNumber { get; set; } = string.Empty;
+    public DateTime BirthDate { get; set; }
+}
+
+public class ManualLoginRequest
+{
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
 public class AuthResponse
 {
     public string Token { get; set; } = string.Empty;

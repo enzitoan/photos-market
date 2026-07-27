@@ -1,4 +1,5 @@
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using PhotosMarket.API.Configuration;
@@ -16,6 +17,8 @@ public interface IAuthService
     Task<AuthResponse> AuthenticateWithGoogleAsync(string idToken, string? refreshToken = null, string? accessToken = null);
     Task<AuthResponse> AuthenticatePhotographerWithGoogleAsync(string idToken, string? refreshToken = null, string? accessToken = null);
     Task<AuthResponse> AuthenticateAdminAsync(string username);
+    Task<AuthResponse> RegisterManualAsync(ManualRegisterRequest request);
+    Task<AuthResponse> LoginManualAsync(ManualLoginRequest request);
     Task<AuthResponse> CompleteRegistrationAsync(string userId, CompleteRegistrationRequest request);
     string GenerateJwtToken(User user);
     Task<User?> GetUserFromTokenAsync(string token);
@@ -29,6 +32,7 @@ public class AuthService : IAuthService
     private readonly GooglePhotosSettings _googleSettings;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<AuthService> _logger;
+    private readonly PasswordHasher<User> _passwordHasher;
     private static readonly string[] PHOTOGRAPHER_EMAILS = { "egan.fotografia.ph@gmail.com" };
 
     public AuthService(
@@ -43,6 +47,7 @@ public class AuthService : IAuthService
         _googleSettings = googleSettings.Value;
         _jwtSettings = jwtSettings.Value;
         _logger = logger;
+        _passwordHasher = new PasswordHasher<User>();
     }
 
     public async Task<AuthResponse> AuthenticateWithGoogleAsync(string idToken, string? refreshToken = null, string? accessToken = null)
@@ -211,6 +216,106 @@ public class AuthService : IAuthService
             Email = user.Email,
             Name = user.Name,
             IsAdmin = user.IsAdmin
+        };
+    }
+
+    public async Task<AuthResponse> RegisterManualAsync(ManualRegisterRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+            throw new ArgumentException("El nombre es requerido");
+
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ArgumentException("El correo electrónico es requerido");
+
+        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
+            throw new ArgumentException("La contraseña debe tener al menos 8 caracteres");
+
+        if (!string.Equals(request.Password, request.ConfirmPassword, StringComparison.Ordinal))
+            throw new ArgumentException("Las contraseñas no coinciden");
+
+        if (string.IsNullOrWhiteSpace(request.Phone))
+            throw new ArgumentException("El teléfono es requerido");
+
+        if (string.IsNullOrWhiteSpace(request.IdType) || (request.IdType != "RUT" && request.IdType != "DNI"))
+            throw new ArgumentException("Tipo de identificación inválido. Debe ser 'RUT' o 'DNI'");
+
+        if (string.IsNullOrWhiteSpace(request.IdNumber))
+            throw new ArgumentException("El número de identificación es requerido");
+
+        if (request.IdType == "RUT" && !ValidateRut(request.IdNumber))
+            throw new ArgumentException("RUT inválido. Por favor verifica el formato (ej: 12345678-9)");
+
+        var age = DateTime.Today.Year - request.BirthDate.Year;
+        if (request.BirthDate.Date > DateTime.Today.AddYears(-age)) age--;
+
+        if (age < 18)
+            throw new ArgumentException("Debes ser mayor de 18 años para registrarte");
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail);
+        if (existingUser != null)
+            throw new InvalidOperationException("Ya existe un usuario registrado con ese correo electrónico");
+
+        var user = new User
+        {
+            GoogleUserId = $"manual-{normalizedEmail}",
+            Email = normalizedEmail,
+            Name = request.Name.Trim(),
+            Role = UserRole.Customer,
+            Phone = request.Phone.Trim(),
+            IdType = request.IdType,
+            IdNumber = request.IdNumber.Trim(),
+            BirthDate = request.BirthDate.Date,
+            IsRegistrationComplete = true,
+            CreatedAt = DateTime.UtcNow,
+            LastLoginAt = DateTime.UtcNow
+        };
+
+        user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
+        user = await _userRepository.CreateAsync(user);
+
+        _logger.LogInformation("Manual user registered successfully with email {Email}", normalizedEmail);
+
+        var token = GenerateJwtToken(user);
+
+        return new AuthResponse
+        {
+            Token = token,
+            UserId = user.Id,
+            Email = user.Email,
+            Name = user.Name,
+            IsAdmin = user.IsAdmin,
+            NeedsRegistration = false
+        };
+    }
+
+    public async Task<AuthResponse> LoginManualAsync(ManualLoginRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email) || string.IsNullOrWhiteSpace(request.Password))
+            throw new ArgumentException("El correo electrónico y la contraseña son requeridos");
+
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail);
+        if (user == null || string.IsNullOrWhiteSpace(user.PasswordHash))
+            throw new UnauthorizedAccessException("Credenciales inválidas");
+
+        var verificationResult = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
+        if (verificationResult == PasswordVerificationResult.Failed)
+            throw new UnauthorizedAccessException("Credenciales inválidas");
+
+        user.LastLoginAt = DateTime.UtcNow;
+        user = await _userRepository.UpdateAsync(user);
+
+        var token = GenerateJwtToken(user);
+
+        return new AuthResponse
+        {
+            Token = token,
+            UserId = user.Id,
+            Email = user.Email,
+            Name = user.Name,
+            IsAdmin = user.IsAdmin,
+            NeedsRegistration = false
         };
     }
 

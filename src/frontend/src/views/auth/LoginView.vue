@@ -4,12 +4,12 @@
       <div class="text-center">
         <h2 class="text-4xl font-bold text-gray-900">📸 PhotosMarket</h2>
         <p class="mt-2 text-sm text-gray-600">
-          Inicia sesión con tu cuenta de Google
+          Inicia sesión con Google o crea tu cuenta manualmente
         </p>
       </div>
-      
-      <div class="card">
-        <button 
+
+      <div class="card space-y-4">
+        <button
           @click="handleGoogleLogin"
           :disabled="loading"
           class="w-full flex items-center justify-center px-4 py-3 border border-transparent text-base font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -22,12 +22,39 @@
           </svg>
           {{ loading ? 'Conectando...' : 'Continuar con Google' }}
         </button>
-        
+
+        <div class="relative">
+          <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+          </div>
+          <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-gray-50 text-gray-500">o</span>
+          </div>
+        </div>
+
+        <form @submit.prevent="handleManualLogin" class="space-y-4">
+          <div>
+            <label for="email" class="block text-sm font-medium text-gray-700">Correo electrónico</label>
+            <input id="email" v-model="manualForm.email" type="email" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+          </div>
+          <div>
+            <label for="password" class="block text-sm font-medium text-gray-700">Contraseña</label>
+            <input id="password" v-model="manualForm.password" type="password" required class="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+          </div>
+          <button type="submit" :disabled="loading" class="w-full flex justify-center px-4 py-3 border border-gray-300 text-base font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed">
+            {{ loading ? 'Ingresando...' : 'Iniciar sesión' }}
+          </button>
+        </form>
+
+        <div class="text-center text-sm text-gray-500">
+          ¿No tienes cuenta? <router-link to="/register" class="text-primary-600 font-medium">Crear una cuenta</router-link>
+        </div>
+
         <div v-if="error" class="mt-4 text-sm text-red-600 text-center">
           {{ error }}
         </div>
       </div>
-      
+
       <div class="text-center text-sm text-gray-500">
         Al iniciar sesión, aceptas nuestros términos de servicio y política de privacidad
       </div>
@@ -38,19 +65,22 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import authService from '@/services/authService'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref(null)
+const manualForm = ref({ email: '', password: '' })
 
 async function handleGoogleLogin() {
   try {
     loading.value = true
     error.value = null
-    
+
     const response = await authService.getGoogleLoginUrl()
-    
+
     if (response.authUrl) {
       window.location.href = response.authUrl
     } else {
@@ -59,6 +89,29 @@ async function handleGoogleLogin() {
   } catch (err) {
     console.error('Login error:', err)
     error.value = 'Error al iniciar sesión. Intenta nuevamente.'
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleManualLogin() {
+  try {
+    loading.value = true
+    error.value = null
+
+    const ok = await authStore.loginManual({
+      email: manualForm.value.email,
+      password: manualForm.value.password
+    })
+
+    if (ok) {
+      router.push('/')
+    } else {
+      error.value = 'Credenciales inválidas'
+    }
+  } catch (err) {
+    console.error('Manual login error:', err)
+    error.value = err?.response?.data?.message || 'No se pudo iniciar sesión'
   } finally {
     loading.value = false
   }

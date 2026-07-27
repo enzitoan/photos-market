@@ -217,6 +217,88 @@ public class AuthController : ControllerBase
         }
     }
 
+    [HttpPost("register-manual")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> RegisterManual([FromBody] ManualRegisterRequest request)
+    {
+        try
+        {
+            var authResponse = await _authService.RegisterManualAsync(request);
+
+            return Ok(new ApiResponse<AuthResponse>
+            {
+                Success = true,
+                Data = authResponse,
+                Message = "Registro manual completado exitosamente"
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during manual registration");
+            return BadRequest(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = "No se pudo completar el registro"
+            });
+        }
+    }
+
+    [HttpPost("login-manual")]
+    public async Task<ActionResult<ApiResponse<AuthResponse>>> LoginManual([FromBody] ManualLoginRequest request)
+    {
+        try
+        {
+            var authResponse = await _authService.LoginManualAsync(request);
+
+            return Ok(new ApiResponse<AuthResponse>
+            {
+                Success = true,
+                Data = authResponse,
+                Message = "Inicio de sesión exitoso"
+            });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = ex.Message
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during manual login");
+            return BadRequest(new ApiResponse<AuthResponse>
+            {
+                Success = false,
+                Message = "No se pudo iniciar sesión"
+            });
+        }
+    }
+
     [HttpPost("complete-registration")]
     public async Task<ActionResult<ApiResponse<AuthResponse>>> CompleteRegistration([FromBody] CompleteRegistrationRequest request)
     {

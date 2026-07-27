@@ -8,6 +8,14 @@ export default {
   async googleCallback(code) {
     return apiClient.post('/auth/google-callback', { code })
   },
+
+  async registerManual(payload) {
+    return apiClient.post('/auth/register-manual', payload)
+  },
+
+  async loginManual(payload) {
+    return apiClient.post('/auth/login-manual', payload)
+  },
   
   async photographerGoogleCallback(code) {
     return apiClient.post('/auth/photographer-google-callback', { code })
