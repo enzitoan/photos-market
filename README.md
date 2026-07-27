@@ -588,6 +588,7 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
+- [ ] **Datos de cuenta en correo** - Agregar datos de cuenta en correos y lugares donde se estime.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.

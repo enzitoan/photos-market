@@ -76,6 +76,16 @@ public class EmailService : IEmailService
                         <strong>⏳ Tu orden será procesada una vez que el pago sea realizado y verificado.</strong>
                     </p>
 
+                    <div style='background-color: #f8f9fa; border: 1px solid #dee2e6; border-left: 4px solid #0d6efd; padding: 16px; margin: 20px 0; border-radius: 6px;'>
+                        <h4 style='margin: 0 0 10px 0; color: #0d6efd;'>Datos para transferencia</h4>
+                        <p style='margin: 0 0 8px 0;'><strong>Enzo Gabriel Ahumada Núñez</strong></p>
+                        <p style='margin: 0 0 8px 0;'><strong>RUT:</strong> 16887619K</p>
+                        <p style='margin: 0 0 8px 0;'><strong>Mercado Pago</strong></p>
+                        <p style='margin: 0 0 8px 0;'><strong>Cuenta Vista</strong></p>
+                        <p style='margin: 0 0 8px 0;'><strong>Número de cuenta:</strong> 1044387122</p>
+                        <p style='margin: 0;'><strong>Email:</strong> ahumada.enzo@gmail.com</p>
+                    </div>
+
                     <h3>Próximos Pasos:</h3>
                     <ol>
                         <li>Realiza la transferencia electrónica por el monto de <strong>{order.Currency} {order.TotalAmount:F2}</strong></li>
@@ -397,6 +407,16 @@ public class EmailService : IEmailService
                     <p style='background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;'>
                         <strong>⏳ La orden será procesada una vez que el pago sea realizado y verificado.</strong>
                     </p>
+
+                    <div style='background-color: #f8f9fa; border: 1px solid #dee2e6; border-left: 4px solid #0d6efd; padding: 16px; margin: 20px 0; border-radius: 6px;'>
+                        <h4 style='margin: 0 0 10px 0; color: #0d6efd;'>Datos para transferencia</h4>
+                        <p style='margin: 0 0 8px 0;'><strong>Enzo Gabriel Ahumada Núñez</strong></p>
+                        <p style='margin: 0 0 8px 0;'><strong>RUT:</strong> 16887619K</p>
+                        <p style='margin: 0 0 8px 0;'><strong>Mercado Pago</strong></p>
+                        <p style='margin: 0 0 8px 0;'><strong>Cuenta Vista</strong></p>
+                        <p style='margin: 0 0 8px 0;'><strong>Número de cuenta:</strong> 1044387122</p>
+                        <p style='margin: 0;'><strong>Email:</strong> ahumada.enzo@gmail.com</p>
+                    </div>
 
                     <p>Este es un email de notificación administrativa.</p>
                     
