@@ -29,11 +29,13 @@ export default {
   },
   
   async getOrderDownloadLink(orderId) {
-    return apiClient.get(`/orders/${orderId}/download-link`)
+    const response = await apiClient.get(`/orders/${orderId}/download-link`)
+    return response.data
   },
   
   async regenerateDownloadLink(orderId) {
-    return apiClient.post(`/orders/${orderId}/regenerate-download-link`)
+    const response = await apiClient.post(`/orders/${orderId}/regenerate-download-link`)
+    return response.data
   },
   
   // Admin endpoints

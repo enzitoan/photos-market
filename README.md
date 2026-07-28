@@ -588,7 +588,7 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
-- [ ] **Añadir registro manual sin cuenta de Google** - Implementar registro manual cuando no tengo cuenta de google.
+- [ ] **Mostrar link de descarga en Panel Admin** - Si el estado del pesido es completado, se debe mostrar el link de descarga en pantalla admin/orders, si el link ya expiro agregar una accion para renovar por el mismo periodo.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.

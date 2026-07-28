@@ -430,8 +430,19 @@ public class OrdersController : ControllerBase
             if (string.IsNullOrEmpty(userId))
                 return Unauthorized();
 
-            // Verificar que el pedido pertenezca al usuario
-            var order = await _orderService.GetOrderByIdAsync(orderId, userId);
+            var isAdmin = User.IsInRole("Admin");
+
+            Order? order;
+            if (isAdmin)
+            {
+                var allOrders = await _orderService.GetAllOrdersAsync();
+                order = allOrders.FirstOrDefault(o => o.Id == orderId);
+            }
+            else
+            {
+                order = await _orderService.GetOrderByIdAsync(orderId, userId);
+            }
+
             if (order == null)
                 return NotFound(new ApiResponse<DownloadLinkDto>
                 {
@@ -440,7 +451,7 @@ public class OrdersController : ControllerBase
                 });
 
             // Buscar el link de descarga
-            var downloadLink = await _downloadLinkRepository.GetByOrderIdAsync(orderId, userId);
+            var downloadLink = await _downloadLinkRepository.GetByOrderIdAsync(orderId, order.UserId);
             
             if (downloadLink == null)
             {

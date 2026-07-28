@@ -76,6 +76,7 @@
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fotos</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[220px]">Enlace</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Fecha</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
             </tr>
@@ -100,6 +101,48 @@
                 >
                   {{ getStatusText(order.status) }}
                 </span>
+              </td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm align-top">
+                <div v-if="order.status === 'Completed'" class="space-y-2">
+                  <div v-if="loadingDownloadLinkId === order.id" class="text-purple-600">Cargando...</div>
+                  <div v-else-if="getDownloadLinkByOrderId(order.id)" class="space-y-2">
+                    <div class="flex items-center gap-2">
+                      <a
+                        :href="getDownloadLinkByOrderId(order.id).downloadUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="truncate text-purple-600 underline hover:text-purple-800"
+                        :title="getDownloadLinkByOrderId(order.id).downloadUrl"
+                      >
+                        {{ truncateUrl(getDownloadLinkByOrderId(order.id).downloadUrl) }}
+                      </a>
+                    </div>
+                    <div class="flex gap-1">
+                      <button
+                        @click="copyDownloadLink(getDownloadLinkByOrderId(order.id).downloadUrl)"
+                        class="rounded border border-purple-200 bg-white p-1 text-purple-700 hover:bg-purple-50"
+                        title="Copiar enlace"
+                      >
+                        <Icon name="copy" :size="14" />
+                      </button>
+                      <button
+                        @click="regenerateDownloadLink(order.id)"
+                        class="rounded border border-purple-200 bg-white p-1 text-purple-700 hover:bg-purple-50"
+                        title="Renovar enlace"
+                      >
+                        <Icon name="refresh" :size="14" />
+                      </button>
+                    </div>
+                  </div>
+                  <button
+                    v-else
+                    @click="regenerateDownloadLink(order.id)"
+                    class="text-sm font-medium text-purple-600 hover:text-purple-800"
+                  >
+                    Generar enlace
+                  </button>
+                </div>
+                <span v-else class="text-gray-400">—</span>
               </td>
               <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-500 hidden md:table-cell">{{ formatDate(order.createdAt) }}</td>
               <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm">
@@ -246,11 +289,67 @@
             </div>
           </div>
           
+          <div v-if="selectedOrder.status === 'Completed'" class="mb-6 rounded-lg border border-purple-200 bg-purple-50 p-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h3 class="font-semibold text-purple-800">Enlace de descarga</h3>
+                <p class="text-sm text-purple-700">Disponible para el administrador y el cliente hasta que expire.</p>
+              </div>
+              <button
+                v-if="getDownloadLinkByOrderId(selectedOrder.id)"
+                @click="copyDownloadLink(getDownloadLinkByOrderId(selectedOrder.id).downloadUrl)"
+                class="rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
+              >
+                Copiar
+              </button>
+            </div>
+
+            <div v-if="loadingDownloadLinkId === selectedOrder.id" class="mt-3 text-sm text-purple-700">
+              Cargando enlace...
+            </div>
+            <div v-else-if="getDownloadLinkByOrderId(selectedOrder.id)" class="mt-3 space-y-3">
+              <div v-if="getDownloadLinkByOrderId(selectedOrder.id).isExpired" class="rounded-md border border-yellow-300 bg-yellow-50 p-3 text-sm text-yellow-800">
+                El enlace ya expiró. Puedes renovarlo para generar uno nuevo con el mismo periodo.
+              </div>
+              <div class="break-all rounded-md border border-purple-200 bg-white p-3 text-sm text-gray-700">
+                {{ getDownloadLinkByOrderId(selectedOrder.id).downloadUrl }}
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <a
+                  :href="getDownloadLinkByOrderId(selectedOrder.id).downloadUrl"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+                >
+                  Abrir enlace
+                </a>
+                <button
+                  @click="regenerateDownloadLink(selectedOrder.id)"
+                  class="rounded-lg border border-purple-300 bg-white px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100"
+                >
+                  {{ getDownloadLinkByOrderId(selectedOrder.id).isExpired ? 'Renovar enlace' : 'Generar/renovar' }}
+                </button>
+              </div>
+              <p class="text-xs text-purple-700">
+                Expira el {{ formatDate(getDownloadLinkByOrderId(selectedOrder.id).expiresAt) }}
+              </p>
+            </div>
+            <div v-else class="mt-3 flex items-center justify-between gap-3 rounded-md border border-dashed border-purple-300 bg-white p-3 text-sm text-purple-700">
+              <span>No hay un enlace disponible para este pedido.</span>
+              <button
+                @click="regenerateDownloadLink(selectedOrder.id)"
+                class="rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white hover:bg-purple-700"
+              >
+                Generar enlace
+              </button>
+            </div>
+          </div>
+
           <!-- Actions -->
           <div class="flex flex-col sm:flex-row gap-3">
             <button 
               v-if="selectedOrder.status === 'AwaitingPayment'"
-             @click="openPaymentModal(selectedOrder.id); selectedOrder = null"
+              @click="openPaymentModal(selectedOrder.id); selectedOrder = null"
               class="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center justify-center"
             >
               <Icon name="check" :size="18" class="mr-2" />
@@ -356,6 +455,8 @@ const processingOrderId = ref(null)
 const showPaymentModal = ref(false)
 const paymentReference = ref('')
 const orderToConfirm = ref(null)
+const downloadLinkByOrderId = ref({})
+const loadingDownloadLinkId = ref(null)
 
 const awaitingOrders = computed(() => orders.value.filter(o => o.status === 'AwaitingPayment'))
 const processingOrders = computed(() => orders.value.filter(o => o.status === 'Processing'))
@@ -372,6 +473,7 @@ async function loadOrders() {
     loading.value = true
     error.value = null
     orders.value = await ordersService.getAllOrders()
+    await Promise.all(orders.value.filter(o => o.status === 'Completed').map(order => loadDownloadLink(order.id, false)))
   } catch (err) {
     console.error('Error loading orders:', err)
     error.value = 'Error al cargar los pedidos. Intenta nuevamente.'
@@ -446,6 +548,63 @@ async function cancelOrder(orderId) {
 
 function viewOrderDetails(order) {
   selectedOrder.value = order
+  if (order?.status === 'Completed') {
+    loadDownloadLink(order.id)
+  }
+}
+
+async function loadDownloadLink(orderId, showSpinner = true) {
+  if (showSpinner) {
+    loadingDownloadLinkId.value = orderId
+  }
+
+  try {
+    const response = await ordersService.getOrderDownloadLink(orderId)
+    downloadLinkByOrderId.value[orderId] = response
+  } catch (err) {
+    console.error('Error loading download link:', err)
+    downloadLinkByOrderId.value[orderId] = null
+    if (showSpinner) {
+      toast.error(err.response?.data?.message || 'No se pudo cargar el enlace de descarga')
+    }
+  } finally {
+    if (showSpinner) {
+      loadingDownloadLinkId.value = null
+    }
+  }
+}
+
+async function regenerateDownloadLink(orderId) {
+  loadingDownloadLinkId.value = orderId
+  try {
+    const response = await ordersService.regenerateDownloadLink(orderId)
+    downloadLinkByOrderId.value[orderId] = response
+    toast.success('Enlace de descarga regenerado correctamente')
+  } catch (err) {
+    console.error('Error regenerating download link:', err)
+    toast.error(err.response?.data?.message || 'No se pudo regenerar el enlace')
+  } finally {
+    loadingDownloadLinkId.value = null
+  }
+}
+
+async function copyDownloadLink(downloadUrl) {
+  try {
+    await navigator.clipboard.writeText(downloadUrl)
+    toast.success('Enlace copiado al portapapeles')
+  } catch (err) {
+    console.error('Error copying download link:', err)
+    toast.error('No se pudo copiar el enlace')
+  }
+}
+
+function getDownloadLinkByOrderId(orderId) {
+  return downloadLinkByOrderId.value[orderId] || null
+}
+
+function truncateUrl(url) {
+  if (!url) return ''
+  return url.length > 40 ? `${url.slice(0, 37)}...` : url
 }
 
 function handleImageError(event) {
