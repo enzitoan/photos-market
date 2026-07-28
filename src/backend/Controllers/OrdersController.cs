@@ -478,11 +478,13 @@ public class OrdersController : ControllerBase
                 });
             }
 
-            // Generar URL absoluta para descarga
-            var baseUrl = !string.IsNullOrEmpty(_appSettings.BaseUrl) 
-                ? _appSettings.BaseUrl 
-                : $"{Request.Scheme}://{Request.Host}";
-            var downloadUrl = $"{baseUrl}/api/download/{downloadLink.Token}";
+            // Generar URL absoluta para descarga usando el frontend
+            var frontendBaseUrl = !string.IsNullOrEmpty(_appSettings.FrontendUrl)
+                ? _appSettings.FrontendUrl.TrimEnd('/')
+                : (!string.IsNullOrEmpty(_appSettings.BaseUrl)
+                    ? _appSettings.BaseUrl.TrimEnd('/')
+                    : $"{Request.Scheme}://{Request.Host}");
+            var downloadUrl = $"{frontendBaseUrl}/download/{downloadLink.Token}";
 
             var downloadLinkDto = new DownloadLinkDto
             {
@@ -557,11 +559,13 @@ public class OrdersController : ControllerBase
             // Generar nuevo link de descarga
             var downloadLink = await _orderService.GenerateDownloadLinkAsync(order);
 
-            // Generar URL absoluta
-            var baseUrl = !string.IsNullOrEmpty(_appSettings.BaseUrl) 
-                ? _appSettings.BaseUrl 
-                : $"{Request.Scheme}://{Request.Host}";
-            var downloadUrl = $"{baseUrl}/api/download/{downloadLink.Token}";
+            // Generar URL absoluta usando el frontend
+            var frontendBaseUrl = !string.IsNullOrEmpty(_appSettings.FrontendUrl)
+                ? _appSettings.FrontendUrl.TrimEnd('/')
+                : (!string.IsNullOrEmpty(_appSettings.BaseUrl)
+                    ? _appSettings.BaseUrl.TrimEnd('/')
+                    : $"{Request.Scheme}://{Request.Host}");
+            var downloadUrl = $"{frontendBaseUrl}/download/{downloadLink.Token}";
 
             var downloadLinkDto = new DownloadLinkDto
             {
