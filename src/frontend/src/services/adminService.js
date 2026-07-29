@@ -12,6 +12,18 @@ export default {
   async unblockAlbum(googleAlbumId) {
     return apiClient.post(`/admin/albums/${googleAlbumId}/unblock`)
   },
+
+  async setAlbumPublic(googleAlbumId) {
+    return apiClient.post(`/admin/albums/${googleAlbumId}/set-public`)
+  },
+
+  async setAlbumPrivate(googleAlbumId, accessCode) {
+    return apiClient.post(`/admin/albums/${googleAlbumId}/set-private`, { accessCode })
+  },
+
+  async renewAccessCode(googleAlbumId, accessCode) {
+    return apiClient.post(`/admin/albums/${googleAlbumId}/renew-access-code`, { accessCode })
+  },
   
   async getPhotographerSettings() {
     return apiClient.get('/admin/albums/photographer-settings')

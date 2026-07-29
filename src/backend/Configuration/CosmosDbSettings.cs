@@ -12,4 +12,5 @@ public class ContainerNamesSettings
     public string Users { get; set; } = string.Empty;
     public string DownloadLinks { get; set; } = string.Empty;
     public string PhotographerSettings { get; set; } = string.Empty;
+    public string Albums { get; set; } = string.Empty;
 }

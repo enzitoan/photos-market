@@ -14,9 +14,15 @@
         </svg>
       </div>
       
-      <!-- Badge de bloqueado -->
-      <div v-if="isBlocked" class="absolute top-2 right-2 badge badge-danger">
+      <!-- Badge de estado -->
+      <div v-if="album.isBlocked || album.visibility === 'Blocked'" class="absolute top-2 right-2 badge badge-danger">
         🔒 Bloqueado
+      </div>
+      <div v-else-if="album.visibility === 'Private' || album.hasAccessCode" class="absolute top-2 right-2 badge badge-warning">
+        🔐 Privado
+      </div>
+      <div v-else class="absolute top-2 right-2 badge badge-success">
+        🌐 Público
       </div>
       
       <!-- Contador de fotos -->
@@ -27,17 +33,20 @@
     
     <div class="p-4">
       <h3 class="text-lg font-semibold text-gray-800 truncate">{{ album.title }}</h3>
-      <p v-if="isBlocked" class="text-sm text-red-600 mt-1">
+      <p v-if="album.isBlocked || album.visibility === 'Blocked'" class="text-sm text-red-600 mt-1">
         Este álbum no está disponible actualmente
+      </p>
+      <p v-else-if="album.visibility === 'Private' || album.hasAccessCode" class="text-sm text-amber-600 mt-1">
+        Este álbum requiere un código de acceso
+      </p>
+      <p v-else class="text-sm text-green-600 mt-1">
+        Este álbum está disponible para todos
       </p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { useAdminStore } from '@/stores/admin'
-
 const props = defineProps({
   album: {
     type: Object,
@@ -46,10 +55,6 @@ const props = defineProps({
 })
 
 defineEmits(['select'])
-
-const adminStore = useAdminStore()
-
-const isBlocked = computed(() => adminStore.isAlbumBlocked(props.album.id))
 
 function handleImageError(event) {
   // Prevenir bucle infinito: si ya intentamos cargar el fallback, no hacer nada

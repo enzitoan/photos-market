@@ -32,8 +32,7 @@ public class AlbumsController : ControllerBase
 
     private bool IsUserAdmin()
     {
-        var roleClaimValue = User.FindFirst(ClaimTypes.Role)?.Value;
-        return roleClaimValue == UserRole.Admin.ToString() || roleClaimValue == UserRole.Photographer.ToString();
+        return User.IsInRole(UserRole.Admin.ToString());
     }
 
     [HttpGet]
@@ -58,6 +57,9 @@ public class AlbumsController : ControllerBase
                     CoverPhotoUrl = ga.CoverPhotoUrl,
                     MediaItemsCount = ga.MediaItemsCount,
                     IsBlocked = config?.IsBlocked ?? false,
+                    Visibility = config?.Visibility ?? AlbumVisibility.Public,
+                    HasAccessCode = !string.IsNullOrWhiteSpace(config?.AccessCodeHash),
+                    AccessCodeExpiresAt = config?.AccessCodeExpiresAt,
                     DisplayOrder = config?.DisplayOrder ?? 0
                 };
             }).ToList();
@@ -80,6 +82,7 @@ public class AlbumsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("{googleAlbumId}/block")]
     public async Task<ActionResult<ApiResponse<bool>>> BlockAlbum(string googleAlbumId)
     {
@@ -95,13 +98,18 @@ public class AlbumsController : ControllerBase
                 album = new Album
                 {
                     GoogleAlbumId = googleAlbumId,
-                    IsBlocked = true
+                    IsBlocked = true,
+                    Visibility = AlbumVisibility.Blocked
                 };
                 await _albumRepository.CreateAsync(album);
             }
             else
             {
                 album.IsBlocked = true;
+                album.Visibility = AlbumVisibility.Blocked;
+                album.AccessCodeHash = null;
+                album.AccessCodeExpiresAt = null;
+                album.AccessCodeGeneratedAt = null;
                 await _albumRepository.UpdateAsync(album);
             }
 
@@ -124,6 +132,7 @@ public class AlbumsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("{googleAlbumId}/unblock")]
     public async Task<ActionResult<ApiResponse<bool>>> UnblockAlbum(string googleAlbumId)
     {
@@ -139,13 +148,15 @@ public class AlbumsController : ControllerBase
                 album = new Album
                 {
                     GoogleAlbumId = googleAlbumId,
-                    IsBlocked = false
+                    IsBlocked = false,
+                    Visibility = AlbumVisibility.Public
                 };
                 await _albumRepository.CreateAsync(album);
             }
             else
             {
                 album.IsBlocked = false;
+                album.Visibility = AlbumVisibility.Public;
                 await _albumRepository.UpdateAsync(album);
             }
 
@@ -166,6 +177,147 @@ public class AlbumsController : ControllerBase
                 Errors = new List<string> { ex.Message }
             });
         }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{googleAlbumId}/set-public")]
+    public async Task<ActionResult<ApiResponse<bool>>> SetAlbumPublic(string googleAlbumId)
+    {
+        try
+        {
+            var album = await _albumRepository.GetByGoogleAlbumIdAsync(googleAlbumId);
+
+            if (album == null)
+            {
+                album = new Album
+                {
+                    GoogleAlbumId = googleAlbumId,
+                    IsBlocked = false,
+                    Visibility = AlbumVisibility.Public
+                };
+                await _albumRepository.CreateAsync(album);
+            }
+            else
+            {
+                album.IsBlocked = false;
+                album.Visibility = AlbumVisibility.Public;
+                await _albumRepository.UpdateAsync(album);
+            }
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = "Album marked as public"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting album {AlbumId} as public", googleAlbumId);
+            return BadRequest(new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to update album visibility",
+                Errors = new List<string> { ex.Message }
+            });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{googleAlbumId}/set-private")]
+    public async Task<ActionResult<ApiResponse<bool>>> SetAlbumPrivate(string googleAlbumId, [FromBody] SetAlbumPrivateRequest request)
+    {
+        try
+        {
+            var album = await _albumRepository.GetByGoogleAlbumIdAsync(googleAlbumId);
+
+            if (album == null)
+            {
+                album = new Album
+                {
+                    GoogleAlbumId = googleAlbumId,
+                    IsBlocked = false,
+                    Visibility = AlbumVisibility.Private,
+                    AccessCodeHash = HashAccessCode(request.AccessCode),
+                    AccessCodeGeneratedAt = DateTime.UtcNow,
+                    AccessCodeExpiresAt = DateTime.UtcNow.AddDays(10)
+                };
+                await _albumRepository.CreateAsync(album);
+            }
+            else
+            {
+                album.IsBlocked = false;
+                album.Visibility = AlbumVisibility.Private;
+                album.AccessCodeHash = HashAccessCode(request.AccessCode);
+                album.AccessCodeGeneratedAt = DateTime.UtcNow;
+                album.AccessCodeExpiresAt = DateTime.UtcNow.AddDays(10);
+                await _albumRepository.UpdateAsync(album);
+            }
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = "Album marked as private"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting album {AlbumId} as private", googleAlbumId);
+            return BadRequest(new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to update album visibility",
+                Errors = new List<string> { ex.Message }
+            });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{googleAlbumId}/renew-access-code")]
+    public async Task<ActionResult<ApiResponse<bool>>> RenewAccessCode(string googleAlbumId, [FromBody] RenewAccessCodeRequest request)
+    {
+        try
+        {
+            var album = await _albumRepository.GetByGoogleAlbumIdAsync(googleAlbumId);
+            if (album == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Album not found"
+                });
+            }
+
+            album.AccessCodeHash = HashAccessCode(request.AccessCode);
+            album.AccessCodeGeneratedAt = DateTime.UtcNow;
+            album.AccessCodeExpiresAt = DateTime.UtcNow.AddDays(5);
+            album.Visibility = AlbumVisibility.Private;
+            album.IsBlocked = false;
+            await _albumRepository.UpdateAsync(album);
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Data = true,
+                Message = "Access code renewed"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error renewing access code for album {AlbumId}", googleAlbumId);
+            return BadRequest(new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to renew access code",
+                Errors = new List<string> { ex.Message }
+            });
+        }
+    }
+
+    private static string HashAccessCode(string accessCode)
+    {
+        return Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(accessCode)));
     }
 
     [HttpGet("photographer-settings")]
@@ -311,6 +463,9 @@ public class AlbumManagementDto
     public string? CoverPhotoUrl { get; set; }
     public int MediaItemsCount { get; set; }
     public bool IsBlocked { get; set; }
+    public AlbumVisibility Visibility { get; set; }
+    public bool HasAccessCode { get; set; }
+    public DateTime? AccessCodeExpiresAt { get; set; }
     public int DisplayOrder { get; set; }
 }
 
@@ -334,4 +489,14 @@ public class UpdatePhotographerSettingsRequest
 public class SetCoverPhotoRequest
 {
     public string PhotoId { get; set; } = string.Empty;
+}
+
+public class SetAlbumPrivateRequest
+{
+    public string AccessCode { get; set; } = string.Empty;
+}
+
+public class RenewAccessCodeRequest
+{
+    public string AccessCode { get; set; } = string.Empty;
 }

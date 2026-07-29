@@ -2,6 +2,13 @@ using Newtonsoft.Json;
 
 namespace PhotosMarket.API.Models;
 
+public enum AlbumVisibility
+{
+    Public = 0,
+    Private = 1,
+    Blocked = 2
+}
+
 public class Album
 {
     [JsonProperty("id")]
@@ -18,6 +25,18 @@ public class Album
 
     [JsonProperty("isBlocked")]
     public bool IsBlocked { get; set; } = false;
+
+    [JsonProperty("visibility")]
+    public AlbumVisibility Visibility { get; set; } = AlbumVisibility.Public;
+
+    [JsonProperty("accessCodeHash")]
+    public string? AccessCodeHash { get; set; }
+
+    [JsonProperty("accessCodeExpiresAt")]
+    public DateTime? AccessCodeExpiresAt { get; set; }
+
+    [JsonProperty("accessCodeGeneratedAt")]
+    public DateTime? AccessCodeGeneratedAt { get; set; }
 
     [JsonProperty("displayOrder")]
     public int DisplayOrder { get; set; } = 0;

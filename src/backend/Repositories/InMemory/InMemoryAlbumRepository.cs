@@ -21,7 +21,7 @@ public class InMemoryAlbumRepository : IAlbumRepository
     public Task<List<Album>> GetVisibleAlbumsAsync()
     {
         return Task.FromResult(_albums.Values
-            .Where(a => !a.IsBlocked)
+            .Where(a => a.Visibility != AlbumVisibility.Blocked)
             .OrderBy(a => a.DisplayOrder)
             .ToList());
     }

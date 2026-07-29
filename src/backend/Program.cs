@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Text.Json.Serialization;
 using PhotosMarket.API.Services;
 using PhotosMarket.API.Repositories;
 using PhotosMarket.API.Repositories.InMemory;
@@ -9,7 +10,11 @@ using PhotosMarket.API.Configuration;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -102,7 +107,7 @@ try
     builder.Services.AddScoped<IOrderRepository, OrderRepository>();
     builder.Services.AddScoped<IUserRepository, UserRepository>();
     builder.Services.AddScoped<IDownloadLinkRepository, DownloadLinkRepository>();
-    builder.Services.AddSingleton<IAlbumRepository, InMemoryAlbumRepository>();
+    builder.Services.AddScoped<IAlbumRepository, AlbumRepository>();
     builder.Services.AddScoped<IPhotographerSettingsRepository, PhotographerSettingsCosmosRepository>();
     
     Console.WriteLine("✅ Using Cosmos DB for data storage");

@@ -76,6 +76,10 @@ public class CosmosDbService : ICosmosDbService
             await _database.CreateContainerIfNotExistsAsync(
                 _settings.ContainerNames.PhotographerSettings, 
                 "/id");
+
+            await _database.CreateContainerIfNotExistsAsync(
+                _settings.ContainerNames.Albums,
+                "/googleAlbumId");
                 
             _isInitialized = true;
         }

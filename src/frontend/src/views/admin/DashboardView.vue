@@ -34,7 +34,7 @@
     
     <div v-else>
       <!-- Stats Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
+      <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 sm:gap-6 mb-6 sm:mb-8">
         <div class="card hover:shadow-lg transition-shadow">
           <div class="flex items-center justify-between">
             <div>
@@ -71,8 +71,41 @@
         <div class="card hover:shadow-lg transition-shadow">
           <div class="flex items-center justify-between">
             <div>
+              <p class="text-gray-600 text-sm font-medium">Álbumes Totales</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-gray-900">{{ stats.totalAlbums }}</p>
+              <p class="text-xs text-gray-500 mt-1">En Google Photos</p>
+            </div>
+            <Icon name="image" :size="40" class="text-gray-400" />
+          </div>
+        </div>
+
+        <div class="card hover:shadow-lg transition-shadow">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-600 text-sm font-medium">Álbumes Públicos</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-green-600">{{ stats.publicAlbums }}</p>
+              <p class="text-xs text-gray-500 mt-1">Disponibles para todos</p>
+            </div>
+            <Icon name="check" :size="40" class="text-green-400" />
+          </div>
+        </div>
+
+        <div class="card hover:shadow-lg transition-shadow">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-gray-600 text-sm font-medium">Álbumes Privados</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-amber-600">{{ stats.privateAlbums }}</p>
+              <p class="text-xs text-gray-500 mt-1">Requieren código</p>
+            </div>
+            <Icon name="lock" :size="40" class="text-amber-400" />
+          </div>
+        </div>
+
+        <div class="card hover:shadow-lg transition-shadow">
+          <div class="flex items-center justify-between">
+            <div>
               <p class="text-gray-600 text-sm font-medium">Álbumes Bloqueados</p>
-              <p class="text-2xl sm:text-3xl font-bold mt-1 text-red-600">{{ adminStore.blockedAlbums.size }}</p>
+              <p class="text-2xl sm:text-3xl font-bold mt-1 text-red-600">{{ stats.blockedAlbums }}</p>
               <p class="text-xs text-gray-500 mt-1">No visibles para clientes</p>
             </div>
             <Icon name="ban" :size="40" class="text-red-400" />
@@ -228,6 +261,7 @@ const adminStore = useAdminStore()
 
 const loading = ref(true)
 const allOrders = ref([])
+const albumVisibilityStats = ref({ totalAlbums: 0, publicAlbums: 0, privateAlbums: 0, blockedAlbums: 0 })
 const googlePhotosConnected = ref(true)
 const checkingGoogle = ref(true)
 
@@ -247,7 +281,11 @@ const stats = computed(() => {
     pendingOrders: pending,
     totalRevenue: revenue,
     confirmedOrders: confirmed.length,
-    totalPhotos: totalPhotos
+    totalPhotos: totalPhotos,
+    totalAlbums: albumVisibilityStats.value.totalAlbums,
+    publicAlbums: albumVisibilityStats.value.publicAlbums,
+    privateAlbums: albumVisibilityStats.value.privateAlbums,
+    blockedAlbums: albumVisibilityStats.value.blockedAlbums
   }
 })
 
@@ -336,6 +374,21 @@ async function loadDashboardData() {
     
     // Cargar órdenes
     allOrders.value = await ordersService.getAllOrders()
+
+    // Cargar métricas de álbumes
+    try {
+      const albumsResponse = await adminService.getAllAlbums()
+      const albums = albumsResponse?.data || []
+      albumVisibilityStats.value = {
+        totalAlbums: albums.length,
+        publicAlbums: albums.filter(album => !album.isBlocked && album.visibility !== 'Private' && album.visibility !== 'Blocked').length,
+        privateAlbums: albums.filter(album => album.visibility === 'Private' || album.hasAccessCode).length,
+        blockedAlbums: albums.filter(album => album.isBlocked || album.visibility === 'Blocked').length
+      }
+    } catch (err) {
+      console.error('Error loading album visibility stats:', err)
+      albumVisibilityStats.value = { totalAlbums: 0, publicAlbums: 0, privateAlbums: 0, blockedAlbums: 0 }
+    }
     
     // Verificar conexión de Google Photos
     checkingGoogle.value = true

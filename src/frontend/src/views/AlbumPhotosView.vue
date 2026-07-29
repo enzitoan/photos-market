@@ -97,6 +97,7 @@ const album = ref(null)
 const photos = ref([])
 const showOnlyInCart = ref(false)
 const showPhotoModal = ref(false)
+const accessCode = ref(sessionStorage.getItem(`album-access-${albumId.value}`) || '')
 const selectedPhoto = ref(null)
 const selectedPhotoIndex = ref(-1)
 
@@ -113,26 +114,33 @@ async function loadPhotos() {
   try {
     loading.value = true
     error.value = null
-    
-    // Obtener información del álbum
-    const albumResponse = await photosService.getAlbum(albumId.value)
+
+    const currentAccessCode = accessCode.value?.trim()
+    const albumResponse = await photosService.getAlbum(albumId.value, currentAccessCode)
     album.value = albumResponse?.data || {
       id: albumId.value,
       title: `Álbum ${albumId.value}`
     }
-    
-    // Obtener fotos del álbum
-    const response = await photosService.getAlbumPhotos(albumId.value)
-    
-    // El backend devuelve { success: true, data: [photos] }
+
+    const response = await photosService.getAlbumPhotos(albumId.value, currentAccessCode)
     const photosData = response?.data || []
-    
-    // Filtrar fotos válidas
     photos.value = photosData.filter(photo => photo && photo.id)
   } catch (err) {
-    console.error('Error loading photos:', err)
-    error.value = 'Error al cargar las fotos. Intenta nuevamente.'
-    toast.error('Error al cargar las fotos')
+    if (err?.response?.status === 403) {
+      const enteredCode = window.prompt('Este álbum es privado. Ingresa el código de acceso:')
+      if (enteredCode && enteredCode.trim()) {
+        accessCode.value = enteredCode.trim()
+        sessionStorage.setItem(`album-access-${albumId.value}`, accessCode.value)
+        await loadPhotos()
+        return
+      }
+      error.value = 'Se requiere un código de acceso para ver este álbum.'
+      toast.error('Se requiere un código de acceso para ver este álbum')
+    } else {
+      console.error('Error loading photos:', err)
+      error.value = 'Error al cargar las fotos. Intenta nuevamente.'
+      toast.error('Error al cargar las fotos')
+    }
   } finally {
     loading.value = false
   }

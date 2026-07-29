@@ -5,12 +5,14 @@ export default {
     return apiClient.get('/photos/albums')
   },
   
-  async getAlbum(albumId) {
-    return apiClient.get(`/photos/albums/${albumId}`)
+  async getAlbum(albumId, accessCode) {
+    const url = accessCode ? `/photos/albums/${albumId}?accessCode=${encodeURIComponent(accessCode)}` : `/photos/albums/${albumId}`
+    return apiClient.get(url)
   },
   
-  async getAlbumPhotos(albumId) {
-    return apiClient.get(`/photos/albums/${albumId}/photos`)
+  async getAlbumPhotos(albumId, accessCode) {
+    const url = accessCode ? `/photos/albums/${albumId}/photos?accessCode=${encodeURIComponent(accessCode)}` : `/photos/albums/${albumId}/photos`
+    return apiClient.get(url)
   },
   
   async getPhoto(mediaItemId) {

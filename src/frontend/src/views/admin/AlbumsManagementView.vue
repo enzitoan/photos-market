@@ -14,8 +14,7 @@
         Información
       </h2>
       <p class="text-gray-600 text-sm">
-        Los álbumes bloqueados no serán visibles para los clientes. 
-        Puedes bloquear álbumes temporalmente o desbloquearlos cuando lo necesites.
+        Los álbumes pueden estar en estado Público, Privado o Bloqueado. Solo el administrador puede cambiar el estado y generar o renovar el código de acceso para los álbumes privados.
       </p>
     </div>
     
@@ -110,13 +109,24 @@
               Sin imagen
             </div>
             
-            <!-- Blocked Badge -->
+            <!-- Status Badge -->
             <div 
               v-if="album.isBlocked"
               class="absolute top-2 right-2 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center"
             >
               <Icon name="ban" :size="14" class="mr-1" />
               Bloqueado
+            </div>
+            <div 
+              v-else-if="album.visibility === 'Private'"
+              class="absolute top-2 right-2 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center"
+            >
+              <Icon name="lock" :size="14" class="mr-1" />
+              Privado
+            </div>
+            <div v-else class="absolute top-2 right-2 bg-green-600 text-white px-3 py-1 rounded-full text-xs font-medium flex items-center">
+              <Icon name="check" :size="14" class="mr-1" />
+              Público
             </div>
           </div>
           
@@ -127,31 +137,51 @@
           </p>
           
           <!-- Actions -->
-          <div class="flex gap-2">
-            <button 
-              v-if="album.isBlocked"
-              @click="unblockAlbum(album.googleAlbumId)"
-              class="flex-1 btn btn-success flex items-center justify-center text-sm"
-            >
-              <Icon name="check" :size="16" class="mr-1" />
-              Desbloquear
-            </button>
-            <button 
-              v-else
-              @click="blockAlbum(album.googleAlbumId)"
-              class="flex-1 btn btn-danger flex items-center justify-center text-sm"
-            >
-              <Icon name="ban" :size="16" class="mr-1" />
-              Bloquear
-            </button>
-            
-            <button 
-              @click="viewAlbumDetails(album)"
-              class="btn btn-secondary"
-              title="Ver detalles"
-            >
-              <Icon name="eye" :size="16" />
-            </button>
+          <div class="flex flex-col gap-2">
+            <div class="flex gap-2">
+              <button 
+                v-if="album.isBlocked"
+                @click="unblockAlbum(album.googleAlbumId)"
+                :disabled="!canManageAlbums"
+                class="flex-1 btn btn-success flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="check" :size="16" class="mr-1" />
+                Desbloquear
+              </button>
+              <button 
+                v-else
+                @click="blockAlbum(album.googleAlbumId)"
+                :disabled="!canManageAlbums"
+                class="flex-1 btn btn-danger flex items-center justify-center text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Icon name="ban" :size="16" class="mr-1" />
+                Bloquear
+              </button>
+              
+              <button 
+                @click="viewAlbumDetails(album)"
+                class="btn btn-secondary"
+                title="Ver detalles"
+              >
+                <Icon name="eye" :size="16" />
+              </button>
+            </div>
+            <div class="flex gap-2">
+              <button 
+                @click="makeAlbumPublic(album.googleAlbumId)"
+                :disabled="!canManageAlbums"
+                class="flex-1 btn btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Público
+              </button>
+              <button 
+                @click="makeAlbumPrivate(album.googleAlbumId)"
+                :disabled="!canManageAlbums"
+                class="flex-1 btn btn-warning text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Privado
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -189,9 +219,14 @@
             <div>
               <span class="font-medium text-gray-700">Estado:</span>
               <p class="text-gray-600 flex items-center">
-                <Icon :name="selectedAlbum.isBlocked ? 'ban' : 'check'" :size="16" class="mr-1" :class="selectedAlbum.isBlocked ? 'text-red-600' : 'text-green-600'" />
-                {{ selectedAlbum.isBlocked ? 'Bloqueado' : 'Activo' }}
+                <Icon :name="selectedAlbum.isBlocked ? 'ban' : selectedAlbum.visibility === 'Private' ? 'lock' : 'check'" :size="16" class="mr-1" :class="selectedAlbum.isBlocked ? 'text-red-600' : selectedAlbum.visibility === 'Private' ? 'text-amber-600' : 'text-green-600'" />
+                {{ selectedAlbum.isBlocked ? 'Bloqueado' : selectedAlbum.visibility === 'Private' ? 'Privado' : 'Público' }}
               </p>
+            </div>
+
+            <div v-if="selectedAlbum.hasAccessCode" class="rounded-lg bg-amber-50 p-3">
+              <p class="font-medium text-gray-700">Código de acceso activo</p>
+              <p class="text-sm text-gray-600">Vence: {{ formatDate(selectedAlbum.accessCodeExpiresAt) }}</p>
             </div>
             
             <div v-if="selectedAlbum.productUrl">
@@ -215,12 +250,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useAdminStore } from '@/stores/admin'
+import { useAuthStore } from '@/stores/auth'
 import LoadingSpinner from '@/components/LoadingSpinner.vue'
 import Icon from '@/components/Icon.vue'
 import adminService from '@/services/adminService'
 
 const toast = useToast()
 const adminStore = useAdminStore()
+const authStore = useAuthStore()
 
 const loading = ref(true)
 const error = ref(null)
@@ -228,6 +265,7 @@ const needsGoogleAuth = ref(false)
 const albums = ref([])
 const filter = ref('all')
 const selectedAlbum = ref(null)
+const canManageAlbums = computed(() => authStore.isAdmin)
 
 const activeAlbums = computed(() => 
   albums.value.filter(album => !album.isBlocked)
@@ -285,6 +323,11 @@ async function loadAlbums() {
 }
 
 async function blockAlbum(googleAlbumId) {
+  if (!canManageAlbums.value) {
+    toast.error('Solo el administrador puede cambiar el estado de los álbumes')
+    return
+  }
+
   try {
     const response = await adminService.blockAlbum(googleAlbumId)
     
@@ -306,16 +349,21 @@ async function blockAlbum(googleAlbumId) {
 }
 
 async function unblockAlbum(googleAlbumId) {
+  if (!canManageAlbums.value) {
+    toast.error('Solo el administrador puede cambiar el estado de los álbumes')
+    return
+  }
+
   try {
     const response = await adminService.unblockAlbum(googleAlbumId)
     
     if (response.success) {
       adminStore.unblockAlbum(googleAlbumId)
       
-      // Actualizar el álbum en la lista local
       const album = albums.value.find(a => a.googleAlbumId === googleAlbumId)
       if (album) {
         album.isBlocked = false
+        album.visibility = 'Public'
       }
       
       toast.success('Álbum desbloqueado exitosamente')
@@ -324,6 +372,68 @@ async function unblockAlbum(googleAlbumId) {
     console.error('Error unblocking album:', err)
     toast.error('Error al desbloquear el álbum')
   }
+}
+
+async function makeAlbumPublic(googleAlbumId) {
+  if (!canManageAlbums.value) {
+    toast.error('Solo el administrador puede cambiar el estado de los álbumes')
+    return
+  }
+
+  try {
+    const response = await adminService.setAlbumPublic(googleAlbumId)
+    if (response.success) {
+      const album = albums.value.find(a => a.googleAlbumId === googleAlbumId)
+      if (album) {
+        album.isBlocked = false
+        album.visibility = 'Public'
+        album.hasAccessCode = false
+      }
+      toast.success('Álbum marcado como público')
+    }
+  } catch (err) {
+    console.error('Error setting album public:', err)
+    toast.error('Error al cambiar el estado del álbum')
+  }
+}
+
+async function makeAlbumPrivate(googleAlbumId) {
+  if (!canManageAlbums.value) {
+    toast.error('Solo el administrador puede cambiar el estado de los álbumes')
+    return
+  }
+
+  const accessCode = window.prompt('Ingresa el código de acceso para este álbum:')
+  if (!accessCode || !accessCode.trim()) {
+    toast.warning('Debes ingresar un código válido')
+    return
+  }
+
+  try {
+    const response = await adminService.setAlbumPrivate(googleAlbumId, accessCode.trim())
+    if (response.success) {
+      const album = albums.value.find(a => a.googleAlbumId === googleAlbumId)
+      if (album) {
+        album.isBlocked = false
+        album.visibility = 'Private'
+        album.hasAccessCode = true
+      }
+      toast.success('Álbum marcado como privado')
+    }
+  } catch (err) {
+    console.error('Error setting album private:', err)
+    toast.error('Error al cambiar el estado del álbum')
+  }
+}
+
+function formatDate(dateString) {
+  if (!dateString) return 'Sin fecha'
+  const date = new Date(dateString)
+  return date.toLocaleDateString('es-CL', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
 }
 
 function viewAlbumDetails(album) {

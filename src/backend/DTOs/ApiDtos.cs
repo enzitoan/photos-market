@@ -56,6 +56,9 @@ public class AlbumDto
     public string Title { get; set; } = string.Empty;
     public string? CoverPhotoUrl { get; set; }
     public int MediaItemsCount { get; set; }
+    public bool IsBlocked { get; set; }
+    public PhotosMarket.API.Models.AlbumVisibility Visibility { get; set; }
+    public bool HasAccessCode { get; set; }
 }
 
 public class PhotoDto

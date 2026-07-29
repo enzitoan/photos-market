@@ -76,18 +76,32 @@ public class PhotosController : ControllerBase
     }
 
     [HttpGet("albums")]
-    public async Task<ActionResult<ApiResponse<List<AlbumDto>>>> GetAlbums()
+    public async Task<ActionResult<ApiResponse<List<AlbumDto>>>> GetAlbums([FromQuery] string? accessCode)
     {
         try
         {
             var albums = await _googleDriveService.GetAlbumsAsync();
+            var albumConfigs = await _albumRepository.GetAllAsync();
+            var now = DateTime.UtcNow;
 
-            // Obtener álbumes bloqueados
-            var blockedAlbums = await _albumRepository.GetAllAsync();
-            var blockedIds = blockedAlbums.Where(a => a.IsBlocked).Select(a => a.GoogleAlbumId).ToHashSet();
-
-            // Filtrar álbumes bloqueados para usuarios normales
-            var filteredAlbums = albums.Where(a => !blockedIds.Contains(a.Id)).ToList();
+            var filteredAlbums = albums.Select(ga =>
+            {
+                var config = albumConfigs.FirstOrDefault(ac => ac.GoogleAlbumId == ga.Id);
+                var isVisible = IsAlbumVisible(config, accessCode, now);
+                return new { Album = ga, Config = config, IsVisible = isVisible };
+            })
+            .Where(x => x.IsVisible)
+            .Select(x => new AlbumDto
+            {
+                Id = x.Album.Id,
+                Title = x.Album.Title,
+                CoverPhotoUrl = x.Album.CoverPhotoUrl,
+                MediaItemsCount = x.Album.MediaItemsCount,
+                IsBlocked = x.Config?.IsBlocked ?? false,
+                Visibility = x.Config?.Visibility ?? Models.AlbumVisibility.Public,
+                HasAccessCode = !string.IsNullOrWhiteSpace(x.Config?.AccessCodeHash)
+            })
+            .ToList();
 
             return Ok(new ApiResponse<List<AlbumDto>>
             {
@@ -108,7 +122,7 @@ public class PhotosController : ControllerBase
     }
     
     [HttpGet("albums/{albumId}")]
-    public async Task<ActionResult<ApiResponse<AlbumDto>>> GetAlbum(string albumId)
+    public async Task<ActionResult<ApiResponse<AlbumDto>>> GetAlbum(string albumId, [FromQuery] string? accessCode)
     {
         try
         {
@@ -123,9 +137,8 @@ public class PhotosController : ControllerBase
                 });
             }
 
-            // Verificar si está bloqueado
             var albumConfig = await _albumRepository.GetByGoogleAlbumIdAsync(albumId);
-            if (albumConfig?.IsBlocked == true)
+            if (!IsAlbumVisible(albumConfig, accessCode, DateTime.UtcNow))
             {
                 return Forbid();
             }
@@ -133,7 +146,16 @@ public class PhotosController : ControllerBase
             return Ok(new ApiResponse<AlbumDto>
             {
                 Success = true,
-                Data = album
+                Data = new AlbumDto
+                {
+                    Id = album.Id,
+                    Title = album.Title,
+                    CoverPhotoUrl = album.CoverPhotoUrl,
+                    MediaItemsCount = album.MediaItemsCount,
+                    IsBlocked = albumConfig?.IsBlocked ?? false,
+                    Visibility = albumConfig?.Visibility ?? Models.AlbumVisibility.Public,
+                    HasAccessCode = !string.IsNullOrWhiteSpace(albumConfig?.AccessCodeHash)
+                }
             });
         }
         catch (Exception ex)
@@ -149,16 +171,19 @@ public class PhotosController : ControllerBase
     }
 
     [HttpGet("albums/{albumId}/photos")]
-    public async Task<ActionResult<ApiResponse<List<PhotoDto>>>> GetAlbumPhotos(string albumId)
+    public async Task<ActionResult<ApiResponse<List<PhotoDto>>>> GetAlbumPhotos(string albumId, [FromQuery] string? accessCode)
     {
         try
         {
-            // Primero obtener información del álbum
+            var albumConfig = await _albumRepository.GetByGoogleAlbumIdAsync(albumId);
+            if (!IsAlbumVisible(albumConfig, accessCode, DateTime.UtcNow))
+            {
+                return Forbid();
+            }
+
             var album = await _googleDriveService.GetAlbumByIdAsync(albumId);
-            
             var photos = await _googleDriveService.GetPhotosFromAlbumAsync(albumId);
 
-            // Agregar información del álbum a cada foto
             if (album != null)
             {
                 foreach (var photo in photos)
@@ -184,6 +209,46 @@ public class PhotosController : ControllerBase
                 Errors = new List<string> { ex.Message }
             });
         }
+    }
+
+    private static bool IsAlbumVisible(Models.Album? albumConfig, string? accessCode, DateTime now)
+    {
+        if (albumConfig == null)
+        {
+            return true;
+        }
+
+        if (albumConfig.IsBlocked || albumConfig.Visibility == Models.AlbumVisibility.Blocked)
+        {
+            return false;
+        }
+
+        if (albumConfig.Visibility == Models.AlbumVisibility.Public)
+        {
+            return true;
+        }
+
+        if (albumConfig.Visibility == Models.AlbumVisibility.Private)
+        {
+            if (string.IsNullOrWhiteSpace(accessCode) || string.IsNullOrWhiteSpace(albumConfig.AccessCodeHash))
+            {
+                return false;
+            }
+
+            if (albumConfig.AccessCodeExpiresAt.HasValue && albumConfig.AccessCodeExpiresAt.Value <= now)
+            {
+                return false;
+            }
+
+            return HashAccessCode(accessCode) == albumConfig.AccessCodeHash;
+        }
+
+        return true;
+    }
+
+    private static string HashAccessCode(string accessCode)
+    {
+        return Convert.ToBase64String(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(accessCode)));
     }
 
     /// <summary>
