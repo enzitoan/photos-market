@@ -8,9 +8,9 @@ public class CosmosDbSettings
 
 public class ContainerNamesSettings
 {
-    public string Orders { get; set; } = string.Empty;
-    public string Users { get; set; } = string.Empty;
-    public string DownloadLinks { get; set; } = string.Empty;
-    public string PhotographerSettings { get; set; } = string.Empty;
-    public string Albums { get; set; } = string.Empty;
+    public string Orders { get; set; } = "Orders";
+    public string Users { get; set; } = "Users";
+    public string DownloadLinks { get; set; } = "DownloadLinks";
+    public string PhotographerSettings { get; set; } = "PhotographerSettings";
+    public string Albums { get; set; } = "Albums";
 }

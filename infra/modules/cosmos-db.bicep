@@ -106,6 +106,22 @@ resource photographerSettingsContainer 'Microsoft.DocumentDB/databaseAccounts/sq
   }
 }
 
+resource albumsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-05-15' = {
+  parent: database
+  name: 'Albums'
+  properties: {
+    resource: {
+      id: 'Albums'
+      partitionKey: {
+        paths: [
+          '/googleAlbumId'
+        ]
+        kind: 'Hash'
+      }
+    }
+  }
+}
+
 output id string = cosmosAccount.id
 output name string = cosmosAccount.name
 output endpoint string = cosmosAccount.properties.documentEndpoint

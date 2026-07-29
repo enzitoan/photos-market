@@ -60,36 +60,29 @@ public class CosmosDbService : ICosmosDbService
         {
             _database = await _cosmosClient.CreateDatabaseIfNotExistsAsync(_settings.DatabaseName);
 
-            // Create containers
-            await _database.CreateContainerIfNotExistsAsync(
-                _settings.ContainerNames.Orders, 
-                "/userId");
+            await EnsureContainerAsync(_settings.ContainerNames.Orders, "/userId");
+            await EnsureContainerAsync(_settings.ContainerNames.Users, "/googleUserId");
+            await EnsureContainerAsync(_settings.ContainerNames.DownloadLinks, "/userId");
+            await EnsureContainerAsync(_settings.ContainerNames.PhotographerSettings, "/id");
+            await EnsureContainerAsync(_settings.ContainerNames.Albums, "/googleAlbumId");
 
-            await _database.CreateContainerIfNotExistsAsync(
-                _settings.ContainerNames.Users, 
-                "/googleUserId");
-
-            await _database.CreateContainerIfNotExistsAsync(
-                _settings.ContainerNames.DownloadLinks, 
-                "/userId");
-
-            await _database.CreateContainerIfNotExistsAsync(
-                _settings.ContainerNames.PhotographerSettings, 
-                "/id");
-
-            await _database.CreateContainerIfNotExistsAsync(
-                _settings.ContainerNames.Albums,
-                "/googleAlbumId");
-                
             _isInitialized = true;
         }
         catch (Exception ex)
         {
-            // Para desarrollo: marcar como inicializado incluso si falla
-            // Esto permite que la app se ejecute sin Cosmos DB para probar otras funcionalidades
-            Console.WriteLine($"Warning: Could not initialize Cosmos DB: {ex.Message}");
-            Console.WriteLine("Running in mock mode - data will not be persisted");
+            Console.WriteLine($"Warning: Could not initialize Cosmos DB containers completely: {ex.Message}");
+            Console.WriteLine("The application will continue using Cosmos if the database is reachable, but some containers may be unavailable.");
             _isInitialized = true;
         }
+    }
+
+    private async Task EnsureContainerAsync(string containerName, string partitionKey)
+    {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return;
+        }
+
+        await _database!.CreateContainerIfNotExistsAsync(containerName, partitionKey);
     }
 }

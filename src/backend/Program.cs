@@ -94,30 +94,26 @@ var cosmosConnectionString = builder.Configuration.GetConnectionString("CosmosDb
 
 try
 {
-    // Try to initialize Cosmos DB
     var settings = builder.Configuration.GetSection("CosmosDb").Get<CosmosDbSettings>();
     var cosmosDbService = new CosmosDbService(cosmosConnectionString!, settings!);
-    
-    // Test connection - this will throw if Cosmos DB is not available
+
     var testTask = Task.Run(async () => await cosmosDbService.InitializeDatabaseAsync());
-    testTask.Wait(TimeSpan.FromSeconds(5)); // 5 second timeout
-    
-    // If we get here, Cosmos DB is available
+    testTask.Wait(TimeSpan.FromSeconds(5));
+
     builder.Services.AddSingleton<ICosmosDbService>(cosmosDbService);
     builder.Services.AddScoped<IOrderRepository, OrderRepository>();
     builder.Services.AddScoped<IUserRepository, UserRepository>();
     builder.Services.AddScoped<IDownloadLinkRepository, DownloadLinkRepository>();
     builder.Services.AddScoped<IAlbumRepository, AlbumRepository>();
     builder.Services.AddScoped<IPhotographerSettingsRepository, PhotographerSettingsCosmosRepository>();
-    
-    Console.WriteLine("✅ Using Cosmos DB for data storage");
+
+    Console.WriteLine("✅ Cosmos DB repositories registered");
 }
 catch (Exception ex)
 {
     Console.WriteLine($"⚠️  Warning: Could not initialize Cosmos DB: {ex.Message}");
-    Console.WriteLine("📦 Using IN-MEMORY storage (data will be lost on restart)");
-    
-    // Use in-memory repositories
+    Console.WriteLine("📦 Falling back to in-memory storage for this session only");
+
     builder.Services.AddSingleton<IOrderRepository, InMemoryOrderRepository>();
     builder.Services.AddSingleton<IUserRepository, InMemoryUserRepository>();
     builder.Services.AddSingleton<IDownloadLinkRepository, InMemoryDownloadLinkRepository>();

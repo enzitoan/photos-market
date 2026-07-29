@@ -158,6 +158,10 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               value: 'PhotographerSettings'
             }
             {
+              name: 'CosmosDb__ContainerNames__Albums'
+              value: 'Albums'
+            }
+            {
               name: 'GoogleDrive__RootFolderId'
               value: googleDriveRootFolderId
             }

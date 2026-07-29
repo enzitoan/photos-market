@@ -1,0 +1,1460 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.45.15.27210",
+      "templateHash": "878500318212033706"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources"
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "dev",
+      "allowedValues": [
+        "dev",
+        "staging",
+        "prod"
+      ],
+      "metadata": {
+        "description": "Environment name (dev, staging, prod)"
+      }
+    },
+    "appName": {
+      "type": "string",
+      "defaultValue": "photosmarket",
+      "metadata": {
+        "description": "Application name"
+      }
+    },
+    "cosmosDbAccountName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-cosmos-{1}', parameters('appName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "CosmosDB account name"
+      }
+    },
+    "containerRegistryName": {
+      "type": "string",
+      "defaultValue": "[format('{0}acr{1}', parameters('appName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "Container Registry name"
+      }
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-logs-{1}', parameters('appName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "Log Analytics Workspace name"
+      }
+    },
+    "containerAppsEnvironmentName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-env-{1}', parameters('appName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "Container Apps Environment name"
+      }
+    },
+    "keyVaultName": {
+      "type": "string",
+      "defaultValue": "[format('{0}-kv-{1}', parameters('appName'), parameters('environmentName'))]",
+      "metadata": {
+        "description": "Key Vault name"
+      }
+    },
+    "backendImage": {
+      "type": "string",
+      "defaultValue": "[format('{0}.azurecr.io/photosmarket-backend:latest', parameters('containerRegistryName'))]",
+      "metadata": {
+        "description": "Backend container image"
+      }
+    },
+    "frontendImage": {
+      "type": "string",
+      "defaultValue": "[format('{0}.azurecr.io/photosmarket-frontend:latest', parameters('containerRegistryName'))]",
+      "metadata": {
+        "description": "Frontend container image"
+      }
+    },
+    "googleOAuthClientId": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Google OAuth Client ID"
+      }
+    },
+    "googleOAuthClientSecret": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Google OAuth Client Secret"
+      }
+    },
+    "googleDriveRootFolderId": {
+      "type": "string",
+      "metadata": {
+        "description": "Google Drive Root Folder ID"
+      }
+    },
+    "jwtSecretKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "JWT Secret Key"
+      }
+    },
+    "googleDriveCredentials": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Google Drive Service Account Credentials JSON"
+      }
+    },
+    "emailApiKey": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Email Service API Key (Resend)"
+      }
+    },
+    "emailEnabled": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable email sending"
+      }
+    },
+    "watermarkFontSizeDivisor": {
+      "type": "string",
+      "defaultValue": "55",
+      "metadata": {
+        "description": "Watermark font size divisor (lower = larger watermark, recommended: 20-50)"
+      }
+    },
+    "watermarkTextOpacity": {
+      "type": "string",
+      "defaultValue": "0.6",
+      "metadata": {
+        "description": "Watermark text opacity (0.0-1.0, recommended: 0.5-0.9)"
+      }
+    },
+    "watermarkShadowOpacity": {
+      "type": "string",
+      "defaultValue": "0.3",
+      "metadata": {
+        "description": "Watermark shadow opacity (0.0-1.0, recommended: 0.5-0.8)"
+      }
+    },
+    "watermarkVerticalPosition": {
+      "type": "string",
+      "defaultValue": "0.9",
+      "metadata": {
+        "description": "Watermark vertical position (0.0=top, 1.0=bottom, recommended: 0.85-0.95)"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
+      "name": "[guid(subscription().subscriptionId, resourceGroup().id, parameters('keyVaultName'), format('{0}-backend-{1}', parameters('appName'), parameters('environmentName')), '4633458b-17de-408a-b874-0445c86b69e6')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'backendApp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'backendApp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+      "name": "[guid(subscription().subscriptionId, resourceGroup().id, parameters('containerRegistryName'), format('{0}-backend-{1}', parameters('appName'), parameters('environmentName')), '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'backendApp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'backendApp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2022-04-01",
+      "scope": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName'))]",
+      "name": "[guid(subscription().subscriptionId, resourceGroup().id, parameters('containerRegistryName'), format('{0}-frontend-{1}', parameters('appName'), parameters('environmentName')), '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')]",
+        "principalId": "[reference(resourceId('Microsoft.Resources/deployments', 'frontendApp'), '2025-04-01').outputs.principalId.value]",
+        "principalType": "ServicePrincipal"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'frontendApp')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "containerRegistry",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[parameters('containerRegistryName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "4763648680180247813"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the Container Registry"
+              }
+            },
+            "sku": {
+              "type": "string",
+              "defaultValue": "Basic",
+              "metadata": {
+                "description": "SKU for the Container Registry"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.ContainerRegistry/registries",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "sku": {
+                "name": "[parameters('sku')]"
+              },
+              "properties": {
+                "adminUserEnabled": true,
+                "publicNetworkAccess": "Enabled"
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.ContainerRegistry/registries', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "loginServer": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('name')), '2023-07-01').loginServer]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "logAnalytics",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[parameters('logAnalyticsWorkspaceName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "4440082785584836524"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics Workspace name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the Log Analytics Workspace"
+              }
+            },
+            "sku": {
+              "type": "string",
+              "defaultValue": "PerGB2018",
+              "metadata": {
+                "description": "SKU for the Log Analytics Workspace"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.OperationalInsights/workspaces",
+              "apiVersion": "2023-09-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "name": "[parameters('sku')]"
+                },
+                "retentionInDays": 30
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "workspaceId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('name')), '2023-09-01').customerId]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "cosmosDb",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "accountName": {
+            "value": "[parameters('cosmosDbAccountName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "databaseName": {
+            "value": "PhotosMarketDb"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "15013305435113509164"
+            }
+          },
+          "parameters": {
+            "accountName": {
+              "type": "string",
+              "metadata": {
+                "description": "CosmosDB account name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the CosmosDB account"
+              }
+            },
+            "databaseName": {
+              "type": "string",
+              "metadata": {
+                "description": "Database name"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts",
+              "apiVersion": "2024-05-15",
+              "name": "[parameters('accountName')]",
+              "location": "[parameters('location')]",
+              "kind": "GlobalDocumentDB",
+              "properties": {
+                "databaseAccountOfferType": "Standard",
+                "consistencyPolicy": {
+                  "defaultConsistencyLevel": "Session"
+                },
+                "locations": [
+                  {
+                    "locationName": "[parameters('location')]",
+                    "failoverPriority": 0,
+                    "isZoneRedundant": false
+                  }
+                ],
+                "enableFreeTier": true,
+                "capabilities": [
+                  {
+                    "name": "EnableServerless"
+                  }
+                ]
+              }
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}', parameters('accountName'), parameters('databaseName'))]",
+              "properties": {
+                "resource": {
+                  "id": "[parameters('databaseName')]"
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('databaseName'), 'Orders')]",
+              "properties": {
+                "resource": {
+                  "id": "Orders",
+                  "partitionKey": {
+                    "paths": [
+                      "/userId"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('accountName'), parameters('databaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('databaseName'), 'Users')]",
+              "properties": {
+                "resource": {
+                  "id": "Users",
+                  "partitionKey": {
+                    "paths": [
+                      "/googleUserId"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('accountName'), parameters('databaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('databaseName'), 'DownloadLinks')]",
+              "properties": {
+                "resource": {
+                  "id": "DownloadLinks",
+                  "partitionKey": {
+                    "paths": [
+                      "/userId"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('accountName'), parameters('databaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('databaseName'), 'PhotographerSettings')]",
+              "properties": {
+                "resource": {
+                  "id": "PhotographerSettings",
+                  "partitionKey": {
+                    "paths": [
+                      "/id"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('accountName'), parameters('databaseName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers",
+              "apiVersion": "2024-05-15",
+              "name": "[format('{0}/{1}/{2}', parameters('accountName'), parameters('databaseName'), 'Albums')]",
+              "properties": {
+                "resource": {
+                  "id": "Albums",
+                  "partitionKey": {
+                    "paths": [
+                      "/googleAlbumId"
+                    ],
+                    "kind": "Hash"
+                  }
+                }
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts/sqlDatabases', parameters('accountName'), parameters('databaseName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('accountName')]"
+            },
+            "endpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName')), '2024-05-15').documentEndpoint]"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "keyVault",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[parameters('keyVaultName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "googleOAuthClientId": {
+            "value": "[parameters('googleOAuthClientId')]"
+          },
+          "googleOAuthClientSecret": {
+            "value": "[parameters('googleOAuthClientSecret')]"
+          },
+          "jwtSecretKey": {
+            "value": "[parameters('jwtSecretKey')]"
+          },
+          "cosmosDbAccountName": {
+            "value": "[parameters('cosmosDbAccountName')]"
+          },
+          "googleDriveCredentials": {
+            "value": "[parameters('googleDriveCredentials')]"
+          },
+          "emailApiKey": {
+            "value": "[parameters('emailApiKey')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "12082446997381937705"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the Key Vault"
+              }
+            },
+            "googleOAuthClientId": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Google OAuth Client ID"
+              }
+            },
+            "googleOAuthClientSecret": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Google OAuth Client Secret"
+              }
+            },
+            "jwtSecretKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "JWT Secret Key"
+              }
+            },
+            "cosmosDbAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "CosmosDB Account Name"
+              }
+            },
+            "googleDriveCredentials": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Google Drive Service Account Credentials JSON"
+              }
+            },
+            "emailApiKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Email Service API Key (Resend)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.KeyVault/vaults",
+              "apiVersion": "2023-07-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "sku": {
+                  "family": "A",
+                  "name": "standard"
+                },
+                "tenantId": "[subscription().tenantId]",
+                "enableRbacAuthorization": true,
+                "enabledForDeployment": false,
+                "enabledForDiskEncryption": false,
+                "enabledForTemplateDeployment": true,
+                "publicNetworkAccess": "Enabled"
+              }
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'GoogleOAuthClientId')]",
+              "properties": {
+                "value": "[parameters('googleOAuthClientId')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'GoogleOAuthClientSecret')]",
+              "properties": {
+                "value": "[parameters('googleOAuthClientSecret')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'JwtSecretKey')]",
+              "properties": {
+                "value": "[parameters('jwtSecretKey')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'CosmosDbConnectionString')]",
+              "properties": {
+                "value": "[format('AccountEndpoint={0};AccountKey={1};', reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2024-05-15').documentEndpoint, listKeys(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosDbAccountName')), '2024-05-15').primaryMasterKey)]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'GoogleDriveCredentials')]",
+              "properties": {
+                "value": "[parameters('googleDriveCredentials')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('name'), 'EmailApiKey')]",
+              "properties": {
+                "value": "[parameters('emailApiKey')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.KeyVault/vaults', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "uri": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('name')), '2023-07-01').vaultUri]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'cosmosDb')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "containerAppsEnvironment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[parameters('containerAppsEnvironmentName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "logAnalyticsWorkspaceName": {
+            "value": "[parameters('logAnalyticsWorkspaceName')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "14090465762696504527"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the Container Apps Environment"
+              }
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string",
+              "metadata": {
+                "description": "Log Analytics Workspace Name"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "properties": {
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2023-09-01').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2023-09-01').primarySharedKey]"
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/managedEnvironments', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "defaultDomain": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/managedEnvironments', parameters('name')), '2024-03-01').defaultDomain]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'logAnalytics')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "frontendApp",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-frontend-{1}', parameters('appName'), parameters('environmentName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "containerAppsEnvironmentId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment'), '2025-04-01').outputs.id.value]"
+          },
+          "containerImage": {
+            "value": "[parameters('frontendImage')]"
+          },
+          "containerRegistryName": {
+            "value": "[parameters('containerRegistryName')]"
+          },
+          "backendUrl": {
+            "value": "[format('{0}-backend-{1}.{2}', parameters('appName'), parameters('environmentName'), reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment'), '2025-04-01').outputs.defaultDomain.value)]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "14723422656889926344"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the Container App"
+              }
+            },
+            "containerAppsEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment ID"
+              }
+            },
+            "containerImage": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image"
+              }
+            },
+            "containerRegistryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry name"
+              }
+            },
+            "backendUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Backend URL"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('containerAppsEnvironmentId')]",
+                "configuration": {
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 80,
+                    "transport": "auto",
+                    "allowInsecure": false
+                  },
+                  "registries": [
+                    {
+                      "server": "[format('{0}.azurecr.io', parameters('containerRegistryName'))]",
+                      "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').username]",
+                      "passwordSecretRef": "acr-password"
+                    }
+                  ],
+                  "secrets": [
+                    {
+                      "name": "acr-password",
+                      "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').passwords[0].value]"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "frontend",
+                      "image": "[parameters('containerImage')]",
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "VITE_API_URL",
+                          "value": "[format('https://{0}', parameters('backendUrl'))]"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 5,
+                    "rules": [
+                      {
+                        "name": "http-scaling",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "50"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'containerRegistry')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "backendApp",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "name": {
+            "value": "[format('{0}-backend-{1}', parameters('appName'), parameters('environmentName'))]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "containerAppsEnvironmentId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment'), '2025-04-01').outputs.id.value]"
+          },
+          "containerImage": {
+            "value": "[parameters('backendImage')]"
+          },
+          "containerRegistryName": {
+            "value": "[parameters('containerRegistryName')]"
+          },
+          "keyVaultUri": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVault'), '2025-04-01').outputs.uri.value]"
+          },
+          "googleDriveRootFolderId": {
+            "value": "[parameters('googleDriveRootFolderId')]"
+          },
+          "frontendUrl": {
+            "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'frontendApp'), '2025-04-01').outputs.fqdn.value)]"
+          },
+          "backendBaseUrl": {
+            "value": "[format('https://{0}-backend-{1}.{2}', parameters('appName'), parameters('environmentName'), reference(resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment'), '2025-04-01').outputs.defaultDomain.value)]"
+          },
+          "emailEnabled": {
+            "value": "[parameters('emailEnabled')]"
+          },
+          "watermarkFontSizeDivisor": {
+            "value": "[parameters('watermarkFontSizeDivisor')]"
+          },
+          "watermarkTextOpacity": {
+            "value": "[parameters('watermarkTextOpacity')]"
+          },
+          "watermarkShadowOpacity": {
+            "value": "[parameters('watermarkShadowOpacity')]"
+          },
+          "watermarkVerticalPosition": {
+            "value": "[parameters('watermarkVerticalPosition')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.45.15.27210",
+              "templateHash": "17885191382049773547"
+            }
+          },
+          "parameters": {
+            "name": {
+              "type": "string",
+              "metadata": {
+                "description": "Container App name"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "Location for the Container App"
+              }
+            },
+            "containerAppsEnvironmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Apps Environment ID"
+              }
+            },
+            "containerImage": {
+              "type": "string",
+              "metadata": {
+                "description": "Container image"
+              }
+            },
+            "containerRegistryName": {
+              "type": "string",
+              "metadata": {
+                "description": "Container Registry name"
+              }
+            },
+            "keyVaultUri": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault URI"
+              }
+            },
+            "googleDriveRootFolderId": {
+              "type": "string",
+              "metadata": {
+                "description": "Google Drive Root Folder ID"
+              }
+            },
+            "frontendUrl": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Frontend URL for CORS"
+              }
+            },
+            "backendBaseUrl": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Backend Base URL"
+              }
+            },
+            "emailEnabled": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable email sending"
+              }
+            },
+            "watermarkFontSizeDivisor": {
+              "type": "string",
+              "defaultValue": "55",
+              "metadata": {
+                "description": "Watermark font size divisor (lower = larger watermark)"
+              }
+            },
+            "watermarkTextOpacity": {
+              "type": "string",
+              "defaultValue": "0.6",
+              "metadata": {
+                "description": "Watermark text opacity (0.0-1.0)"
+              }
+            },
+            "watermarkShadowOpacity": {
+              "type": "string",
+              "defaultValue": "0.3",
+              "metadata": {
+                "description": "Watermark shadow opacity (0.0-1.0)"
+              }
+            },
+            "watermarkVerticalPosition": {
+              "type": "string",
+              "defaultValue": "0.9",
+              "metadata": {
+                "description": "Watermark vertical position (0.0=top, 1.0=bottom)"
+              }
+            }
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2024-03-01",
+              "name": "[parameters('name')]",
+              "location": "[parameters('location')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('containerAppsEnvironmentId')]",
+                "configuration": {
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "transport": "auto",
+                    "allowInsecure": false
+                  },
+                  "registries": [
+                    {
+                      "server": "[format('{0}.azurecr.io', parameters('containerRegistryName'))]",
+                      "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').username]",
+                      "passwordSecretRef": "container-registry-password"
+                    }
+                  ],
+                  "secrets": [
+                    {
+                      "name": "container-registry-password",
+                      "value": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2023-07-01').passwords[0].value]"
+                    },
+                    {
+                      "name": "google-oauth-client-id",
+                      "keyVaultUrl": "[format('{0}secrets/GoogleOAuthClientId', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "google-oauth-client-secret",
+                      "keyVaultUrl": "[format('{0}secrets/GoogleOAuthClientSecret', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "jwt-secret-key",
+                      "keyVaultUrl": "[format('{0}secrets/JwtSecretKey', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "cosmosdb-connection-string",
+                      "keyVaultUrl": "[format('{0}secrets/CosmosDbConnectionString', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "google-drive-credentials",
+                      "keyVaultUrl": "[format('{0}secrets/GoogleDriveCredentials', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    },
+                    {
+                      "name": "email-api-key",
+                      "keyVaultUrl": "[format('{0}secrets/EmailApiKey', parameters('keyVaultUri'))]",
+                      "identity": "system"
+                    }
+                  ]
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "backend",
+                      "image": "[parameters('containerImage')]",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1.0Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "Production"
+                        },
+                        {
+                          "name": "FRONTEND_URL",
+                          "value": "[parameters('frontendUrl')]"
+                        },
+                        {
+                          "name": "Application__FrontendUrl",
+                          "value": "[parameters('frontendUrl')]"
+                        },
+                        {
+                          "name": "Application__BaseUrl",
+                          "value": "[parameters('backendBaseUrl')]"
+                        },
+                        {
+                          "name": "ASPNETCORE_URLS",
+                          "value": "http://+:8080"
+                        },
+                        {
+                          "name": "UseRealCosmosDb",
+                          "value": "true"
+                        },
+                        {
+                          "name": "ConnectionStrings__CosmosDb",
+                          "secretRef": "cosmosdb-connection-string"
+                        },
+                        {
+                          "name": "CosmosDb__DatabaseName",
+                          "value": "PhotosMarketDb"
+                        },
+                        {
+                          "name": "CosmosDb__ContainerNames__Orders",
+                          "value": "Orders"
+                        },
+                        {
+                          "name": "CosmosDb__ContainerNames__Users",
+                          "value": "Users"
+                        },
+                        {
+                          "name": "CosmosDb__ContainerNames__DownloadLinks",
+                          "value": "DownloadLinks"
+                        },
+                        {
+                          "name": "CosmosDb__ContainerNames__PhotographerSettings",
+                          "value": "PhotographerSettings"
+                        },
+                        {
+                          "name": "CosmosDb__ContainerNames__Albums",
+                          "value": "Albums"
+                        },
+                        {
+                          "name": "GoogleDrive__RootFolderId",
+                          "value": "[parameters('googleDriveRootFolderId')]"
+                        },
+                        {
+                          "name": "GoogleDrive__ApplicationName",
+                          "value": "PhotosMarket"
+                        },
+                        {
+                          "name": "GoogleDrive__CredentialsJson",
+                          "secretRef": "google-drive-credentials"
+                        },
+                        {
+                          "name": "GoogleOAuth__ClientId",
+                          "secretRef": "google-oauth-client-id"
+                        },
+                        {
+                          "name": "GoogleOAuth__ClientSecret",
+                          "secretRef": "google-oauth-client-secret"
+                        },
+                        {
+                          "name": "GoogleOAuth__Scopes__0",
+                          "value": "https://www.googleapis.com/auth/userinfo.email"
+                        },
+                        {
+                          "name": "GoogleOAuth__Scopes__1",
+                          "value": "https://www.googleapis.com/auth/userinfo.profile"
+                        },
+                        {
+                          "name": "GoogleOAuth__Scopes__2",
+                          "value": "openid"
+                        },
+                        {
+                          "name": "Jwt__SecretKey",
+                          "secretRef": "jwt-secret-key"
+                        },
+                        {
+                          "name": "Jwt__Issuer",
+                          "value": "PhotosMarketAPI"
+                        },
+                        {
+                          "name": "Jwt__Audience",
+                          "value": "PhotosMarketClient"
+                        },
+                        {
+                          "name": "Jwt__ExpirationInMinutes",
+                          "value": "60"
+                        },
+                        {
+                          "name": "Email__Enabled",
+                          "value": "[string(parameters('emailEnabled'))]"
+                        },
+                        {
+                          "name": "Email__ApiKey",
+                          "secretRef": "email-api-key"
+                        },
+                        {
+                          "name": "Email__SenderEmail",
+                          "value": "onboarding@resend.dev"
+                        },
+                        {
+                          "name": "Email__SenderName",
+                          "value": "Photos Market"
+                        },
+                        {
+                          "name": "Application__DefaultWatermarkText",
+                          "value": "@egan.fotografia"
+                        },
+                        {
+                          "name": "Application__WatermarkFontSizeDivisor",
+                          "value": "[parameters('watermarkFontSizeDivisor')]"
+                        },
+                        {
+                          "name": "Application__WatermarkTextOpacity",
+                          "value": "[parameters('watermarkTextOpacity')]"
+                        },
+                        {
+                          "name": "Application__WatermarkShadowOpacity",
+                          "value": "[parameters('watermarkShadowOpacity')]"
+                        },
+                        {
+                          "name": "Application__WatermarkVerticalPosition",
+                          "value": "[parameters('watermarkVerticalPosition')]"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 1,
+                    "maxReplicas": 10,
+                    "rules": [
+                      {
+                        "name": "http-scaling",
+                        "http": {
+                          "metadata": {
+                            "concurrentRequests": "100"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "id": {
+              "type": "string",
+              "value": "[resourceId('Microsoft.App/containerApps', parameters('name'))]"
+            },
+            "name": {
+              "type": "string",
+              "value": "[parameters('name')]"
+            },
+            "fqdn": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01').configuration.ingress.fqdn]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('name')), '2024-03-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppsEnvironment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'containerRegistry')]",
+        "[resourceId('Microsoft.Resources/deployments', 'frontendApp')]",
+        "[resourceId('Microsoft.Resources/deployments', 'keyVault')]"
+      ]
+    }
+  ],
+  "outputs": {
+    "backendUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'backendApp'), '2025-04-01').outputs.fqdn.value)]"
+    },
+    "frontendUrl": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'frontendApp'), '2025-04-01').outputs.fqdn.value)]"
+    },
+    "containerRegistryLoginServer": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerRegistry'), '2025-04-01').outputs.loginServer.value]"
+    },
+    "cosmosDbEndpoint": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'cosmosDb'), '2025-04-01').outputs.endpoint.value]"
+    },
+    "keyVaultUri": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVault'), '2025-04-01').outputs.uri.value]"
+    },
+    "keyVaultName": {
+      "type": "string",
+      "value": "[parameters('keyVaultName')]"
+    }
+  }
+}
