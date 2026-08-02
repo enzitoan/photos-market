@@ -97,11 +97,11 @@ const album = ref(null)
 const photos = ref([])
 const showOnlyInCart = ref(false)
 const showPhotoModal = ref(false)
-const accessCode = ref(sessionStorage.getItem(`album-access-${albumId.value}`) || '')
 const selectedPhoto = ref(null)
 const selectedPhotoIndex = ref(-1)
 
 const albumId = computed(() => route.params.id)
+const accessCode = ref(sessionStorage.getItem(`album-access-${albumId.value}`) || '')
 
 const filteredPhotos = computed(() => {
   if (!showOnlyInCart.value) return photos.value
