@@ -47,7 +47,7 @@
         </form>
 
         <div class="text-center text-sm text-gray-500">
-          ¿No tienes cuenta? <router-link to="/register" class="text-primary-600 font-medium">Crear una cuenta</router-link>
+          ¿No tienes cuenta? <router-link :to="{ name: 'register', query: route.query }" class="text-primary-600 font-medium">Crear una cuenta</router-link>
         </div>
 
         <div v-if="error" class="mt-4 text-sm text-red-600 text-center">
@@ -64,20 +64,28 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import authService from '@/services/authService'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const loading = ref(false)
 const error = ref(null)
 const manualForm = ref({ email: '', password: '' })
 
+function saveCheckoutReturn() {
+  if (route.query.redirect === '/cart') {
+    sessionStorage.setItem('postAuthRedirect', '/cart')
+  }
+}
+
 async function handleGoogleLogin() {
   try {
     loading.value = true
     error.value = null
+    saveCheckoutReturn()
 
     const response = await authService.getGoogleLoginUrl()
 
@@ -98,6 +106,7 @@ async function handleManualLogin() {
   try {
     loading.value = true
     error.value = null
+    saveCheckoutReturn()
 
     const ok = await authStore.loginManual({
       email: manualForm.value.email,
@@ -105,7 +114,9 @@ async function handleManualLogin() {
     })
 
     if (ok) {
-      router.push('/')
+      const redirect = sessionStorage.getItem('postAuthRedirect') || '/'
+      sessionStorage.removeItem('postAuthRedirect')
+      router.push(redirect)
     } else {
       error.value = 'Credenciales inválidas'
     }

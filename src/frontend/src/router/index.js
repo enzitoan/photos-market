@@ -27,20 +27,17 @@ const router = createRouter({
     {
       path: '/albums',
       name: 'albums',
-      component: () => import('@/views/AlbumsView.vue'),
-      meta: { requiresAuth: true }
+      component: () => import('@/views/AlbumsView.vue')
     },
     {
       path: '/albums/:id',
       name: 'album-photos',
-      component: () => import('@/views/AlbumPhotosView.vue'),
-      meta: { requiresAuth: true }
+      component: () => import('@/views/AlbumPhotosView.vue')
     },
     {
       path: '/cart',
       name: 'cart',
-      component: () => import('@/views/CartView.vue'),
-      meta: { requiresAuth: true }
+      component: () => import('@/views/CartView.vue')
     },
     {
       path: '/orders',
@@ -125,7 +122,7 @@ router.beforeEach((to, from, next) => {
       next({ name: 'admin-login' })
     } else {
       // Si es una ruta de cliente, redirigir al login normal
-      next({ name: 'login' })
+      next({ name: 'login', query: { redirect: to.fullPath } })
     }
   } 
   // Si requiere admin y no es admin

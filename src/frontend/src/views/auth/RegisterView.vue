@@ -102,11 +102,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'vue-toastification'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const toast = useToast()
 
@@ -311,7 +312,11 @@ async function handleSubmit() {
 
     if (success) {
       toast.success(hasTempSession.value ? '¡Registro completado exitosamente!' : '¡Cuenta creada exitosamente!')
-      router.push('/albums')
+      const redirect = route.query.redirect === '/cart' || sessionStorage.getItem('postAuthRedirect') === '/cart'
+        ? '/cart'
+        : '/albums'
+      sessionStorage.removeItem('postAuthRedirect')
+      router.push(redirect)
     } else {
       toast.error(hasTempSession.value ? 'Error al completar el registro' : 'Error al crear la cuenta')
     }

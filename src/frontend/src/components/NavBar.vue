@@ -10,15 +10,17 @@
         </div>
         
         <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4">
+          <router-link 
+            to="/albums" 
+            class="text-gray-700 hover:text-primary-600 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium flex items-center"
+          >
+            <span class="hidden sm:inline">Álbumes</span>
+            <Icon name="image" :size="18" class="sm:hidden" />
+          </router-link>
+
+          <CartIcon />
+
           <template v-if="authStore.isAuthenticated">
-            <router-link 
-              to="/albums" 
-              class="text-gray-700 hover:text-primary-600 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium flex items-center"
-            >
-              <span class="hidden sm:inline">Álbumes</span>
-              <Icon name="image" :size="18" class="sm:hidden" />
-            </router-link>
-            
             <router-link 
               to="/orders" 
               class="text-gray-700 hover:text-primary-600 px-2 sm:px-3 py-2 rounded-md text-xs sm:text-sm font-medium flex items-center"
@@ -26,8 +28,6 @@
               <span class="hidden sm:inline">Mis Pedidos</span>
               <Icon name="file-text" :size="18" class="sm:hidden" />
             </router-link>
-            
-            <CartIcon />
             
             <router-link 
               v-if="authStore.isAdmin"

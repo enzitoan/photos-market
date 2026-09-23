@@ -49,10 +49,12 @@ onMounted(async () => {
         
         if (success && success.needsRegistration) {
           toast.info('Por favor completa tu registro')
-          router.push('/register')
+          router.push({ name: 'register', query: { redirect: sessionStorage.getItem('postAuthRedirect') || undefined } })
         } else if (success) {
           toast.success('¡Bienvenido!')
-          router.push('/albums')
+          const redirect = sessionStorage.getItem('postAuthRedirect') || '/albums'
+          sessionStorage.removeItem('postAuthRedirect')
+          router.push(redirect)
         } else {
           toast.error('Error al autenticar')
           router.push('/login')

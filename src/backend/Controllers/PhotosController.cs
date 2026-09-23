@@ -11,7 +11,6 @@ namespace PhotosMarket.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
 public class PhotosController : ControllerBase
 {
     private readonly GoogleDriveService _googleDriveService;
@@ -76,6 +75,7 @@ public class PhotosController : ControllerBase
     }
 
     [HttpGet("albums")]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<List<AlbumDto>>>> GetAlbums([FromQuery] string? accessCode)
     {
         try
@@ -122,6 +122,7 @@ public class PhotosController : ControllerBase
     }
     
     [HttpGet("albums/{albumId}")]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<AlbumDto>>> GetAlbum(string albumId, [FromQuery] string? accessCode)
     {
         try
@@ -171,6 +172,7 @@ public class PhotosController : ControllerBase
     }
 
     [HttpGet("albums/{albumId}/photos")]
+    [AllowAnonymous]
     public async Task<ActionResult<ApiResponse<List<PhotoDto>>>> GetAlbumPhotos(string albumId, [FromQuery] string? accessCode)
     {
         try

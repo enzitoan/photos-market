@@ -145,6 +145,7 @@ import ordersService from '@/services/ordersService'
 const router = useRouter()
 const toast = useToast()
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 
 const isProcessing = ref(false)
 
@@ -187,11 +188,16 @@ function formatDate(dateString) {
 }
 
 async function handleCheckout() {
+  if (!authStore.isAuthenticated) {
+    toast.info('Inicia sesión o crea una cuenta para finalizar tu compra.')
+    router.push({ name: 'login', query: { redirect: '/cart' } })
+    return
+  }
+
   try {
     isProcessing.value = true
     
     // Obtener el nombre del usuario desde el store de auth
-    const authStore = useAuthStore()
     const userName = authStore.user?.name || ''
     
     // Preparar los datos de la orden según el formato que espera el backend
