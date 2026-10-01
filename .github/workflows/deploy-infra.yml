@@ -52,8 +52,16 @@ jobs:
           
           MISSING_SECRETS=()
           
-          if [ -z "${{ secrets.AZURE_CREDENTIALS }}" ]; then
-            MISSING_SECRETS+=("AZURE_CREDENTIALS")
+          if [ -z "${{ secrets.AZURE_CLIENT_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_CLIENT_ID")
+          fi
+
+          if [ -z "${{ secrets.AZURE_TENANT_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_TENANT_ID")
+          fi
+
+          if [ -z "${{ secrets.AZURE_SUBSCRIPTION_ID }}" ]; then
+            MISSING_SECRETS+=("AZURE_SUBSCRIPTION_ID")
           fi
           
           if [ -z "${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}" ]; then
@@ -112,10 +120,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Log in to Azure
+      # - name: Log in to Azure
+      #   uses: azure/login@v2
+      #   with:
+      #     creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Azure Login (OIDC)
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Verify Azure session
+        run: az account show
 
       - name: Create Resource Group (if not exists)
         run: |
@@ -445,7 +463,9 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v2
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Update Frontend with Backend URL
         run: |
