@@ -25,7 +25,7 @@
           
           <div class="grid sm:grid-cols-3 gap-6 sm:gap-8">
             <div class="text-center">
-              <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">�</div>
+              <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">🔍</div>
               <h3 class="text-lg sm:text-xl font-semibold mb-2">1. Explora y Selecciona</h3>
               <p class="text-sm sm:text-base text-gray-600">Navega por los álbumes sin necesidad de cuenta y elige tus fotos favoritas</p>
             </div>
