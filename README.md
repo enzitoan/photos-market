@@ -589,7 +589,7 @@ Puertos permitidos por defecto:
 ## 🔜 Roadmap / Mejoras Futuras
 
 - [ ] **Comprar como invitado** - Permitir comprar fotos sin necesidad de crear una cuenta, pero solicitando datos basicos de la compra.
-- [ ] **Visualizar albumes sin cuenta** - Permitir visualizar los albumes sin tener cuenta de usuario, manteniendo todos los permisos.
+- [x] **Visualizar albumes sin cuenta** - Permitir visualizar los albumes sin tener cuenta de usuario, manteniendo todos los permisos.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.

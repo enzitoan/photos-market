@@ -7,18 +7,9 @@
       <section class="bg-gradient-to-r from-primary-600 to-primary-800 text-white py-12 sm:py-16 md:py-20">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold mb-3 sm:mb-4">Bienvenido a PhotosMarket</h1>
-          <p class="text-base sm:text-lg md:text-xl mb-6 sm:mb-8">Compra tus fotos favoritas en alta resolución</p>
+          <p class="text-base sm:text-lg md:text-xl mb-6 sm:mb-8">Explora álbumes sin necesidad de cuenta y compra tus fotos favoritas en alta resolución</p>
           
           <router-link 
-            v-if="!authStore.isAuthenticated"
-            to="/login" 
-            class="inline-block bg-white text-primary-600 px-6 sm:px-8 py-2 sm:py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-gray-100 transition-colors"
-          >
-            Comenzar Ahora
-          </router-link>
-          
-          <router-link 
-            v-else
             to="/albums" 
             class="inline-block bg-white text-primary-600 px-6 sm:px-8 py-2 sm:py-3 rounded-lg text-base sm:text-lg font-semibold hover:bg-gray-100 transition-colors"
           >
@@ -34,15 +25,15 @@
           
           <div class="grid sm:grid-cols-3 gap-6 sm:gap-8">
             <div class="text-center">
-              <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">🔐</div>
-              <h3 class="text-lg sm:text-xl font-semibold mb-2">1. Inicia Sesión</h3>
-              <p class="text-sm sm:text-base text-gray-600">Autentica con tu cuenta de Google de forma segura</p>
+              <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">�</div>
+              <h3 class="text-lg sm:text-xl font-semibold mb-2">1. Explora y Selecciona</h3>
+              <p class="text-sm sm:text-base text-gray-600">Navega por los álbumes sin necesidad de cuenta y elige tus fotos favoritas</p>
             </div>
             
             <div class="text-center">
-              <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">📸</div>
-              <h3 class="text-lg sm:text-xl font-semibold mb-2">2. Explora y Selecciona</h3>
-              <p class="text-sm sm:text-base text-gray-600">Navega por los álbumes y elige tus fotos favoritas</p>
+              <div class="text-4xl sm:text-5xl mb-3 sm:mb-4">🔐</div>
+              <h3 class="text-lg sm:text-xl font-semibold mb-2">2. Inicia Sesión</h3>
+              <p class="text-sm sm:text-base text-gray-600">Solo necesitas autenticarte al momento de finalizar tu compra</p>
             </div>
             
             <div class="text-center">
