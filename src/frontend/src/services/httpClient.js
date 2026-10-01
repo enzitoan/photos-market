@@ -35,8 +35,13 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const authStore = useAuthStore()
+      // Only force a login redirect if there was an active session (expired/invalid token).
+      // Anonymous 401s (e.g. public albums browsing) must never kick the user to /login.
+      const hadSession = authStore.isAuthenticated
       authStore.logout()
-      window.location.href = '/login'
+      if (hadSession) {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
