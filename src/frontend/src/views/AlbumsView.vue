@@ -3,7 +3,16 @@
     <NavBar />
     
     <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
-      <h1 class="text-2xl sm:text-3xl font-bold mb-6 sm:mb-8">Álbumes Disponibles</h1>
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
+        <h1 class="text-2xl sm:text-3xl font-bold">Álbumes Disponibles</h1>
+        <div v-if="!loading && !error && albums.length > 0" class="flex items-center gap-2">
+          <label for="album-sort" class="text-sm text-gray-600">Ordenar por:</label>
+          <select id="album-sort" v-model="sortBy" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm bg-white">
+            <option value="newest">Más recientes</option>
+            <option value="name">Nombre (A-Z)</option>
+          </select>
+        </div>
+      </div>
       
       <LoadingSpinner v-if="loading" message="Cargando álbumes..." />
       
@@ -20,7 +29,7 @@
       
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <AlbumCard 
-          v-for="album in albums" 
+          v-for="album in sortedAlbums" 
           :key="album.id"
           :album="album"
           @click="goToAlbum(album.id)"
@@ -34,7 +43,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import NavBar from '@/components/NavBar.vue'
@@ -49,6 +58,23 @@ const toast = useToast()
 const loading = ref(true)
 const error = ref(null)
 const albums = ref([])
+const sortBy = ref('newest')
+
+const sortedAlbums = computed(() => {
+  const list = [...albums.value]
+  const byName = (a, b) => (a.title || '').localeCompare(b.title || '', 'es', { sensitivity: 'base', numeric: true })
+
+  if (sortBy.value === 'name') {
+    return list.sort(byName)
+  }
+
+  // Más recientes primero; los álbumes sin fecha van al final, ordenados por nombre
+  return list.sort((a, b) => {
+    const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0
+    const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0
+    return dateB - dateA || byName(a, b)
+  })
+})
 
 async function loadAlbums() {
   try {

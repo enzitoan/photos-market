@@ -125,6 +125,7 @@ public class GoogleDriveService
                             Id = folder.Id,
                             Title = folder.Name,
                             MediaItemsCount = photosCount,
+                            CreatedAt = folder.CreatedTimeDateTimeOffset?.UtcDateTime,
                             CoverPhotoUrl = await GetFirstPhotoThumbnailAsync(folder.Id) ?? ""
                         });
                     }

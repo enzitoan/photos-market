@@ -97,6 +97,7 @@ public class PhotosController : ControllerBase
                 Title = x.Album.Title,
                 CoverPhotoUrl = x.Album.CoverPhotoUrl,
                 MediaItemsCount = x.Album.MediaItemsCount,
+                CreatedAt = x.Album.CreatedAt,
                 IsBlocked = x.Config?.IsBlocked ?? false,
                 Visibility = x.Config?.Visibility ?? Models.AlbumVisibility.Public,
                 HasAccessCode = !string.IsNullOrWhiteSpace(x.Config?.AccessCodeHash)
