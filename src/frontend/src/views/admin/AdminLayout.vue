@@ -24,8 +24,8 @@
       <!-- Sidebar -->
       <aside 
         :class="[
-          'bg-white shadow-lg transition-transform duration-300 ease-in-out z-50',
-          'lg:relative lg:translate-x-0',
+          'bg-white shadow-lg transition-transform duration-300 ease-in-out z-50 flex flex-col',
+          'lg:sticky lg:top-0 lg:h-screen lg:self-start lg:shrink-0 lg:translate-x-0',
           'fixed inset-y-0 left-0 w-64',
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         ]"
@@ -36,7 +36,7 @@
           <p class="text-sm text-gray-600 mt-1">Fotógrafo</p>
         </div>
         
-        <nav class="p-4">
+        <nav class="p-4 flex-1 overflow-y-auto">
           <router-link 
             v-for="item in menuItems" 
             :key="item.path"
@@ -50,7 +50,7 @@
           </router-link>
         </nav>
         
-        <div class="absolute bottom-0 w-64 p-4 border-t">
+        <div class="p-4 border-t">
           <router-link 
             to="/" 
             @click="closeSidebar"
