@@ -3,12 +3,15 @@
     <NavBar />
     
     <main class="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8 w-full">
-      <!-- Album Header -->
-      <div class="mb-6 sm:mb-8">
-        <button @click="$router.back()" class="text-primary-600 hover:text-primary-700 mb-3 sm:mb-4 flex items-center text-sm sm:text-base">
+      <!-- Barra fija con el botón de volver -->
+      <div class="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-2 mb-3 sm:mb-4 bg-gray-50/95 backdrop-blur border-b border-gray-200">
+        <button @click="$router.back()" class="text-primary-600 hover:text-primary-700 flex items-center text-sm sm:text-base">
           <span class="mr-2">←</span> Volver a álbumes
         </button>
-        
+      </div>
+
+      <!-- Album Header -->
+      <div class="mb-6 sm:mb-8">
         <div v-if="album">
           <h1 class="text-2xl sm:text-3xl font-bold mb-2">{{ album.title }}</h1>
           <p class="text-sm sm:text-base text-gray-600">{{ photos.length }} fotos disponibles</p>
@@ -70,6 +73,21 @@
       @navigate="navigateToPhoto"
     />
 
+    <!-- Botón para subir al inicio -->
+    <transition name="fade">
+      <button
+        v-if="showScrollTop && !showPhotoModal"
+        @click="scrollToTop"
+        class="fixed bottom-24 right-6 z-40 w-12 h-12 flex items-center justify-center bg-white text-primary-600 hover:bg-primary-50 border border-gray-200 rounded-full shadow-lg transition-colors"
+        title="Subir al inicio"
+        aria-label="Subir al inicio del álbum"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+      </button>
+    </transition>
+
     <!-- Floating Cart Button -->
     <FloatingCartButton />
   </div>
@@ -99,6 +117,15 @@ const showOnlyInCart = ref(false)
 const showPhotoModal = ref(false)
 const selectedPhoto = ref(null)
 const selectedPhotoIndex = ref(-1)
+const showScrollTop = ref(false)
+
+function handleScroll() {
+  showScrollTop.value = window.scrollY > 300
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 const albumId = computed(() => route.params.id)
 const accessCode = ref(sessionStorage.getItem(`album-access-${albumId.value}`) || '')
@@ -215,9 +242,12 @@ onMounted(async () => {
   // Add keyboard event listener for screenshot and print prevention
   window.addEventListener('keyup', handleKeyDown)
   window.addEventListener('keydown', handleKeyDown)
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  handleScroll()
 })
 
 onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleScroll)
   // Clean up event listeners
   window.removeEventListener('keyup', handleKeyDown)
   window.removeEventListener('keydown', handleKeyDown)
@@ -225,6 +255,16 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
 /* Prevent text/image selection */
 .select-none {
   user-select: none;
