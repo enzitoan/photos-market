@@ -37,13 +37,28 @@
       </div>
     </main>
 
+    <!-- Botón para subir al inicio -->
+    <transition name="fade">
+      <button
+        v-if="showScrollTop"
+        @click="scrollToTop"
+        class="fixed bottom-24 right-6 z-40 w-12 h-12 flex items-center justify-center bg-white text-primary-600 hover:bg-primary-50 border border-gray-200 rounded-full shadow-lg transition-colors"
+        title="Subir al inicio"
+        aria-label="Subir al inicio"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
+        </svg>
+      </button>
+    </transition>
+
     <!-- Floating Cart Button -->
     <FloatingCartButton />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'vue-toastification'
 import NavBar from '@/components/NavBar.vue'
@@ -59,6 +74,15 @@ const loading = ref(true)
 const error = ref(null)
 const albums = ref([])
 const sortBy = ref('newest')
+const showScrollTop = ref(false)
+
+function handleScroll() {
+  showScrollTop.value = window.scrollY > 300
+}
+
+function scrollToTop() {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
 
 const sortedAlbums = computed(() => {
   const list = [...albums.value]
@@ -107,5 +131,23 @@ function goToAlbum(albumId) {
 
 onMounted(() => {
   loadAlbums()
+  window.addEventListener('scroll', handleScroll, { passive: true })
+  handleScroll()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 </script>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
