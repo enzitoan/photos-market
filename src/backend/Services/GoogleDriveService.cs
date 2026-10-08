@@ -2,34 +2,63 @@ using Google.Apis.Auth.OAuth2;
 using Google.Apis.Drive.v3;
 using Google.Apis.Drive.v3.Data;
 using Google.Apis.Services;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Primitives;
 using PhotosMarket.API.Configuration;
 using PhotosMarket.API.DTOs;
+using System.Collections.Concurrent;
 using System.Text;
 
 namespace PhotosMarket.API.Services;
 
 public class GoogleDriveService
 {
+    private const int MaxParallelDriveRequests = 5;
+
     private readonly GoogleDriveSettings _settings;
     private readonly ILogger<GoogleDriveService> _logger;
+    private readonly IMemoryCache _cache;
+    private readonly TimeSpan _cacheDuration;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _cacheLocks = new();
+    private readonly SemaphoreSlim _initLock = new(1, 1);
+    private CancellationTokenSource _cacheResetSource = new();
     private DriveService? _driveService;
 
     public GoogleDriveService(
         GoogleDriveSettings settings,
+        IMemoryCache cache,
         ILogger<GoogleDriveService> logger)
     {
         _settings = settings;
+        _cache = cache;
         _logger = logger;
+        _cacheDuration = TimeSpan.FromMinutes(Math.Max(0, settings.CacheMinutes));
     }
 
     /// <summary>
-    /// Inicializa el servicio de Google Drive usando credenciales de Service Account
+    /// Devuelve el servicio de Drive, inicializándolo una sola vez aunque haya llamadas concurrentes
     /// </summary>
     private async Task<DriveService> GetDriveServiceAsync()
     {
         if (_driveService != null)
             return _driveService;
 
+        await _initLock.WaitAsync();
+        try
+        {
+            return _driveService ?? await CreateDriveServiceAsync();
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Inicializa el servicio de Google Drive usando credenciales de Service Account
+    /// </summary>
+    private async Task<DriveService> CreateDriveServiceAsync()
+    {
         try
         {
             GoogleCredential credential;
@@ -86,58 +115,94 @@ public class GoogleDriveService
     }
 
     /// <summary>
-    /// Obtiene todos los álbumes (carpetas) del directorio raíz
+    /// Obtiene todos los álbumes (carpetas) del directorio raíz.
+    /// El resultado se cachea en memoria; los consumidores no deben modificarlo.
     /// </summary>
-    public async Task<List<AlbumDto>> GetAlbumsAsync()
+    public async Task<IReadOnlyList<AlbumDto>> GetAlbumsAsync()
     {
         try
         {
-            var service = await GetDriveServiceAsync();
+            var hadErrors = false;
 
-            // Listar todas las carpetas dentro de la carpeta raíz
-            var request = service.Files.List();
-            request.Q = $"'{_settings.RootFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
-            request.Fields = "files(id, name, webViewLink, createdTime, modifiedTime)";
-            request.OrderBy = "name";
-
-            var result = await request.ExecuteAsync();
-
-            var albums = new List<AlbumDto>();
-
-            if (result.Files != null)
-            {
-                foreach (var folder in result.Files)
+            var albums = await GetOrCreateCachedAsync<IReadOnlyList<AlbumDto>>(
+                AlbumsCacheKey,
+                async () =>
                 {
-                    // Validar que la carpeta tenga datos válidos
-                    if (folder == null || string.IsNullOrEmpty(folder.Id) || string.IsNullOrEmpty(folder.Name))
-                    {
-                        _logger.LogWarning("Carpeta con datos inválidos encontrada, omitiendo...");
-                        continue;
-                    }
+                    var service = await GetDriveServiceAsync();
 
-                    try
+                    // Listar todas las carpetas dentro de la carpeta raíz
+                    var folders = new List<Google.Apis.Drive.v3.Data.File>();
+                    string? pageToken = null;
+                    do
                     {
-                        // Contar cuántas fotos hay en esta carpeta
-                        var photosCount = await GetPhotosCountAsync(folder.Id);
+                        var request = service.Files.List();
+                        request.Q = $"'{_settings.RootFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false";
+                        request.Fields = "nextPageToken, files(id, name, createdTime)";
+                        request.OrderBy = "name";
+                        request.PageSize = 1000;
+                        request.PageToken = pageToken;
 
-                        albums.Add(new AlbumDto
+                        var result = await request.ExecuteAsync();
+                        if (result.Files != null)
+                            folders.AddRange(result.Files);
+                        pageToken = result.NextPageToken;
+                    } while (!string.IsNullOrEmpty(pageToken));
+
+                    // Resumen (conteo + portada) de cada álbum en paralelo, con concurrencia limitada
+                    using var throttle = new SemaphoreSlim(MaxParallelDriveRequests);
+                    var tasks = folders.Select(async folder =>
+                    {
+                        // Validar que la carpeta tenga datos válidos
+                        if (folder == null || string.IsNullOrEmpty(folder.Id) || string.IsNullOrEmpty(folder.Name))
                         {
-                            Id = folder.Id,
-                            Title = folder.Name,
-                            MediaItemsCount = photosCount,
-                            CreatedAt = folder.CreatedTimeDateTimeOffset?.UtcDateTime,
-                            CoverPhotoUrl = await GetFirstPhotoThumbnailAsync(folder.Id) ?? ""
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error procesando carpeta {FolderId}, omitiendo...", folder.Id);
-                    }
-                }
-            }
+                            _logger.LogWarning("Carpeta con datos inválidos encontrada, omitiendo...");
+                            return null;
+                        }
 
-            _logger.LogInformation("Found {Count} albums in Google Drive", albums.Count);
-            return albums;
+                        await throttle.WaitAsync();
+                        try
+                        {
+                            var (photosCount, coverUrl) = await GetAlbumSummaryAsync(folder.Id);
+
+                            return new AlbumDto
+                            {
+                                Id = folder.Id,
+                                Title = folder.Name,
+                                MediaItemsCount = photosCount,
+                                CreatedAt = folder.CreatedTimeDateTimeOffset?.UtcDateTime,
+                                CoverPhotoUrl = coverUrl ?? ""
+                            };
+                        }
+                        catch (Exception ex)
+                        {
+                            hadErrors = true;
+                            _logger.LogWarning(ex, "Error procesando carpeta {FolderId}, omitiendo...", folder.Id);
+                            return null;
+                        }
+                        finally
+                        {
+                            throttle.Release();
+                        }
+                    });
+
+                    var list = (await Task.WhenAll(tasks))
+                        .Where(a => a != null)
+                        .Select(a => a!)
+                        .ToList();
+
+                    // Reutilizar el resumen para las consultas por ID
+                    if (!hadErrors)
+                    {
+                        foreach (var album in list)
+                            SetCache(AlbumCacheKey(album.Id), album);
+                    }
+
+                    _logger.LogInformation("Found {Count} albums in Google Drive", list.Count);
+                    return (IReadOnlyList<AlbumDto>?)list;
+                },
+                shouldCache: _ => !hadErrors);
+
+            return albums ?? new List<AlbumDto>();
         }
         catch (Exception ex)
         {
@@ -147,42 +212,71 @@ public class GoogleDriveService
     }
 
     /// <summary>
-    /// Obtiene las fotos de un álbum específico
+    /// Obtiene las fotos de un álbum específico.
+    /// El resultado se cachea en memoria; los consumidores no deben modificarlo.
     /// </summary>
-    public async Task<List<PhotoDto>> GetPhotosFromAlbumAsync(string albumId)
+    public async Task<IReadOnlyList<PhotoDto>> GetPhotosFromAlbumAsync(string albumId)
     {
         try
         {
-            var service = await GetDriveServiceAsync();
+            var photos = await GetOrCreateCachedAsync<IReadOnlyList<PhotoDto>>(
+                PhotosCacheKey(albumId),
+                async () =>
+                {
+                    var service = await GetDriveServiceAsync();
+                    var list = new List<PhotoDto>();
+                    string? pageToken = null;
 
-            // Listar todos los archivos de imagen en la carpeta
-            var request = service.Files.List();
-            request.Q = $"'{albumId}' in parents and trashed=false and (mimeType contains 'image/' or mimeType='image/jpeg' or mimeType='image/png' or mimeType='image/jpg')";
-            request.Fields = "files(id, name, webViewLink, webContentLink, thumbnailLink, mimeType, size, createdTime)";
-            request.OrderBy = "name";
-            request.PageSize = 1000; // Máximo permitido
+                    // Listar todos los archivos de imagen en la carpeta (con paginación)
+                    do
+                    {
+                        var request = service.Files.List();
+                        request.Q = ImagesInFolderQuery(albumId);
+                        request.Fields = "nextPageToken, files(id, name, createdTime)";
+                        request.OrderBy = "name";
+                        request.PageSize = 1000; // Máximo permitido
+                        request.PageToken = pageToken;
 
-            var result = await request.ExecuteAsync();
+                        var result = await request.ExecuteAsync();
 
-            var photos = result.Files.Select(file => new PhotoDto
-            {
-                Id = file.Id,
-                MediaItemId = file.Id,
-                Filename = file.Name,
-                // Usar el endpoint proxy del backend como fallback
-                ThumbnailUrl = GetGoogleDriveThumbnailUrl(file.Id, file.ThumbnailLink),
-                BaseUrl = GetGoogleDriveDirectUrl(file.Id),
-                CreationTime = file.CreatedTimeDateTimeOffset?.UtcDateTime
-            }).ToList();
+                        if (result.Files != null)
+                        {
+                            list.AddRange(result.Files.Select(file => new PhotoDto
+                            {
+                                Id = file.Id,
+                                MediaItemId = file.Id,
+                                Filename = file.Name,
+                                ThumbnailUrl = GetGoogleDriveThumbnailUrl(file.Id, null),
+                                BaseUrl = GetGoogleDriveDirectUrl(file.Id),
+                                CreationTime = file.CreatedTimeDateTimeOffset?.UtcDateTime
+                            }));
+                        }
 
-            _logger.LogInformation("Found {Count} photos in album {AlbumId}", photos.Count, albumId);
-            return photos;
+                        pageToken = result.NextPageToken;
+                    } while (!string.IsNullOrEmpty(pageToken));
+
+                    _logger.LogInformation("Found {Count} photos in album {AlbumId}", list.Count, albumId);
+                    return (IReadOnlyList<PhotoDto>?)list;
+                });
+
+            return photos ?? new List<PhotoDto>();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al obtener fotos del álbum {AlbumId}", albumId);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Descarta toda la información cacheada de Drive (álbumes, portadas y fotos)
+    /// </summary>
+    public void InvalidateCache()
+    {
+        var previous = Interlocked.Exchange(ref _cacheResetSource, new CancellationTokenSource());
+        previous.Cancel();
+        previous.Dispose();
+        _logger.LogInformation("Google Drive cache invalidated");
     }
 
     /// <summary>
@@ -261,60 +355,37 @@ public class GoogleDriveService
     }
 
     /// <summary>
-    /// Cuenta cuántas fotos hay en una carpeta
+    /// Obtiene la cantidad de fotos y la URL de portada (primera foto) de una carpeta
+    /// con una única consulta paginada
     /// </summary>
-    private async Task<int> GetPhotosCountAsync(string folderId)
+    private async Task<(int Count, string? CoverUrl)> GetAlbumSummaryAsync(string folderId)
     {
-        try
-        {
-            var service = await GetDriveServiceAsync();
+        var service = await GetDriveServiceAsync();
+        var count = 0;
+        string? firstFileId = null;
+        string? pageToken = null;
 
+        do
+        {
             var request = service.Files.List();
-            request.Q = $"'{folderId}' in parents and trashed=false and (mimeType contains 'image/')";
-            request.Fields = "files(id)";
-            request.PageSize = 1000;
-
-            var result = await request.ExecuteAsync();
-            return result.Files.Count;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error al contar fotos en carpeta {FolderId}", folderId);
-            return 0;
-        }
-    }
-
-    /// <summary>
-    /// Obtiene la URL del thumbnail de la primera foto de una carpeta (para cover del álbum)
-    /// </summary>
-    private async Task<string?> GetFirstPhotoThumbnailAsync(string folderId)
-    {
-        try
-        {
-            var service = await GetDriveServiceAsync();
-
-            var request = service.Files.List();
-            request.Q = $"'{folderId}' in parents and trashed=false and (mimeType contains 'image/')";
-            request.Fields = "files(id, thumbnailLink)";
-            request.PageSize = 1;
+            request.Q = ImagesInFolderQuery(folderId);
+            request.Fields = "nextPageToken, files(id)";
             request.OrderBy = "name";
+            request.PageSize = 1000;
+            request.PageToken = pageToken;
 
             var result = await request.ExecuteAsync();
-            var firstFile = result.Files.FirstOrDefault();
-            
-            if (firstFile == null)
-                return null;
-            
-            // Usar el mismo método que para las fotos individuales para generar URL pública
-            return GetGoogleDriveThumbnailUrl(firstFile.Id, firstFile.ThumbnailLink);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Error al obtener thumbnail de carpeta {FolderId}", folderId);
-            return null;
-        }
+            var files = result.Files ?? new List<Google.Apis.Drive.v3.Data.File>();
+
+            firstFileId ??= files.FirstOrDefault()?.Id;
+            count += files.Count;
+            pageToken = result.NextPageToken;
+        } while (!string.IsNullOrEmpty(pageToken));
+
+        var coverUrl = firstFileId == null ? null : GetGoogleDriveThumbnailUrl(firstFileId, null);
+        return (count, coverUrl);
     }
-    
+
     /// <summary>
     /// Obtiene información de un álbum específico por ID
     /// </summary>
@@ -322,34 +393,114 @@ public class GoogleDriveService
     {
         try
         {
-            var service = await GetDriveServiceAsync();
-
-            // Obtener información de la carpeta
-            var request = service.Files.Get(albumId);
-            request.Fields = "id, name, webViewLink, createdTime, modifiedTime";
-            
-            var folder = await request.ExecuteAsync();
-
-            if (folder == null || string.IsNullOrEmpty(folder.Id))
+            return await GetOrCreateCachedAsync<AlbumDto>(AlbumCacheKey(albumId), async () =>
             {
-                return null;
-            }
+                var service = await GetDriveServiceAsync();
 
-            var photosCount = await GetPhotosCountAsync(folder.Id);
-            var coverPhotoUrl = await GetFirstPhotoThumbnailAsync(folder.Id);
+                // Obtener información de la carpeta
+                var request = service.Files.Get(albumId);
+                request.Fields = "id, name, createdTime";
 
-            return new AlbumDto
-            {
-                Id = folder.Id,
-                Title = folder.Name,
-                MediaItemsCount = photosCount,
-                CoverPhotoUrl = coverPhotoUrl ?? ""
-            };
+                var folder = await request.ExecuteAsync();
+
+                if (folder == null || string.IsNullOrEmpty(folder.Id))
+                {
+                    return null;
+                }
+
+                var (photosCount, coverUrl) = await GetAlbumSummaryAsync(folder.Id);
+
+                return new AlbumDto
+                {
+                    Id = folder.Id,
+                    Title = folder.Name,
+                    MediaItemsCount = photosCount,
+                    CreatedAt = folder.CreatedTimeDateTimeOffset?.UtcDateTime,
+                    CoverPhotoUrl = coverUrl ?? ""
+                };
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al obtener álbum {AlbumId}", albumId);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Obtiene solo el título de un álbum (evita calcular conteo y portada)
+    /// </summary>
+    public async Task<string?> GetAlbumTitleAsync(string albumId)
+    {
+        try
+        {
+            if (_cache.TryGetValue(AlbumCacheKey(albumId), out AlbumDto? cachedAlbum) && cachedAlbum != null)
+                return cachedAlbum.Title;
+
+            return await GetOrCreateCachedAsync<string>(AlbumTitleCacheKey(albumId), async () =>
+            {
+                var service = await GetDriveServiceAsync();
+                var request = service.Files.Get(albumId);
+                request.Fields = "id, name";
+
+                var folder = await request.ExecuteAsync();
+                return string.IsNullOrEmpty(folder?.Name) ? null : folder.Name;
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error al obtener título del álbum {AlbumId}", albumId);
+            return null;
+        }
+    }
+
+    private static string ImagesInFolderQuery(string folderId) =>
+        $"'{folderId}' in parents and trashed=false and mimeType contains 'image/'";
+
+    private static string AlbumsCacheKey => "drive:albums";
+    private static string AlbumCacheKey(string albumId) => $"drive:album:{albumId}";
+    private static string AlbumTitleCacheKey(string albumId) => $"drive:album-title:{albumId}";
+    private static string PhotosCacheKey(string albumId) => $"drive:photos:{albumId}";
+
+    private void SetCache<T>(string key, T value) where T : class
+    {
+        if (_cacheDuration <= TimeSpan.Zero)
+            return;
+
+        var options = new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = _cacheDuration };
+        options.AddExpirationToken(new CancellationChangeToken(_cacheResetSource.Token));
+        _cache.Set(key, value, options);
+    }
+
+    /// <summary>
+    /// Devuelve el valor cacheado o ejecuta la fábrica una sola vez por clave aunque haya
+    /// peticiones concurrentes. Los valores nulos y los resultados rechazados por
+    /// <paramref name="shouldCache"/> no se almacenan.
+    /// </summary>
+    private async Task<T?> GetOrCreateCachedAsync<T>(
+        string key,
+        Func<Task<T?>> factory,
+        Func<T, bool>? shouldCache = null) where T : class
+    {
+        if (_cache.TryGetValue(key, out T? cached))
+            return cached;
+
+        var gate = _cacheLocks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        await gate.WaitAsync();
+        try
+        {
+            if (_cache.TryGetValue(key, out cached))
+                return cached;
+
+            var value = await factory();
+            if (value != null && (shouldCache?.Invoke(value) ?? true))
+                SetCache(key, value);
+
+            return value;
+        }
+        finally
+        {
+            gate.Release();
         }
     }
     

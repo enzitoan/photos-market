@@ -5,6 +5,8 @@
         v-if="album.coverPhotoUrl"
         :src="album.coverPhotoUrl" 
         :alt="album.title"
+        loading="lazy"
+        decoding="async"
         class="w-full h-full object-cover"
         @error="handleImageError"
       />

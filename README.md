@@ -361,10 +361,12 @@ El archivo `src/backend/appsettings.json` contiene:
   "GoogleDrive": {
     "CredentialsFilePath": "google-drive-credentials.json",
     "RootFolderId": "ID_DE_TU_CARPETA_RAIZ",
-    "ApplicationName": "PhotosMarket"
+    "ApplicationName": "PhotosMarket",
+    "CacheMinutes": 5
   }
 }
 ```
+`CacheMinutes` define cuánto se cachea en memoria la información de álbumes y fotos de Drive (0 desactiva la caché). Para ver cambios de inmediato, un admin puede llamar a `POST /api/admin/albums/refresh-cache`.
 
 ### **3. Google OAuth** 
 ```json
@@ -588,8 +590,6 @@ Puertos permitidos por defecto:
 
 ## 🔜 Roadmap / Mejoras Futuras
 
-- [ ] **Comprar como invitado** - Permitir comprar fotos sin necesidad de crear una cuenta, pero solicitando datos basicos de la compra.
-- [x] **Visualizar albumes sin cuenta** - Permitir visualizar los albumes sin tener cuenta de usuario, manteniendo todos los permisos.
 - [ ] **Pasarela de Pago** - Integración con Stripe/PayPal/Mercado Pago.
 - [ ] **Compresión de Imágenes** - Optimización automática.
 - [ ] **Multi-Storage** - Soporte para OneDrive, Dropbox, AWS S3.

@@ -102,6 +102,8 @@
               v-if="album.coverPhotoUrl"
               :src="album.coverPhotoUrl"
               :alt="album.title"
+              loading="lazy"
+              decoding="async"
               class="w-full h-48 object-cover rounded-lg"
               @error="handleImageError"
             >

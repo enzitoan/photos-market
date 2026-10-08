@@ -4,6 +4,8 @@
       <img 
         :src="photo.thumbnailUrl" 
         :alt="photo.filename"
+        loading="lazy"
+        decoding="async"
         class="w-full h-full object-cover select-none"
         draggable="false"
         @contextmenu.prevent

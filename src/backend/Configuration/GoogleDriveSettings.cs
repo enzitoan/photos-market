@@ -22,4 +22,9 @@ public class GoogleDriveSettings
     /// Nombre de la aplicación para Google Drive API
     /// </summary>
     public string ApplicationName { get; set; } = "PhotosMarket";
+
+    /// <summary>
+    /// Minutos que se cachea en memoria la información de álbumes y fotos (0 desactiva la caché)
+    /// </summary>
+    public int CacheMinutes { get; set; } = 5;
 }

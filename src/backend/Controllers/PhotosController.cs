@@ -5,6 +5,7 @@ using PhotosMarket.API.Configuration;
 using PhotosMarket.API.Services;
 using PhotosMarket.API.Repositories;
 using PhotosMarket.API.DTOs;
+using PhotosMarket.API.Filters;
 using System.Security.Claims;
 
 namespace PhotosMarket.API.Controllers;
@@ -76,6 +77,7 @@ public class PhotosController : ControllerBase
 
     [HttpGet("albums")]
     [AllowAnonymous]
+    [ClientCache(60)]
     public async Task<ActionResult<ApiResponse<List<AlbumDto>>>> GetAlbums([FromQuery] string? accessCode)
     {
         try
@@ -124,6 +126,7 @@ public class PhotosController : ControllerBase
     
     [HttpGet("albums/{albumId}")]
     [AllowAnonymous]
+    [ClientCache(60)]
     public async Task<ActionResult<ApiResponse<AlbumDto>>> GetAlbum(string albumId, [FromQuery] string? accessCode)
     {
         try
@@ -174,6 +177,7 @@ public class PhotosController : ControllerBase
 
     [HttpGet("albums/{albumId}/photos")]
     [AllowAnonymous]
+    [ClientCache(60)]
     public async Task<ActionResult<ApiResponse<List<PhotoDto>>>> GetAlbumPhotos(string albumId, [FromQuery] string? accessCode)
     {
         try
@@ -184,18 +188,25 @@ public class PhotosController : ControllerBase
                 return Forbid();
             }
 
-            var album = await _googleDriveService.GetAlbumByIdAsync(albumId);
-            var photos = await _googleDriveService.GetPhotosFromAlbumAsync(albumId);
+            var photosTask = _googleDriveService.GetPhotosFromAlbumAsync(albumId);
+            var titleTask = _googleDriveService.GetAlbumTitleAsync(albumId);
+            await Task.WhenAll(photosTask, titleTask);
 
-            if (album != null)
+            var albumTitle = titleTask.Result;
+
+            // El servicio comparte instancias cacheadas: se copian antes de completar los datos del álbum
+            var photos = photosTask.Result.Select(p => new PhotoDto
             {
-                foreach (var photo in photos)
-                {
-                    photo.AlbumId = albumId;
-                    photo.AlbumTitle = album.Title;
-                }
-            }
-
+                Id = p.Id,
+                MediaItemId = p.MediaItemId,
+                Filename = p.Filename,
+                ThumbnailUrl = p.ThumbnailUrl,
+                BaseUrl = p.BaseUrl,
+                CreationTime = p.CreationTime,
+                Metadata = p.Metadata,
+                AlbumId = albumTitle != null ? albumId : p.AlbumId,
+                AlbumTitle = albumTitle ?? p.AlbumTitle
+            }).ToList();
             return Ok(new ApiResponse<List<PhotoDto>>
             {
                 Success = true,

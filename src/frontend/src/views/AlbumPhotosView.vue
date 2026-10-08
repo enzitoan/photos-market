@@ -116,13 +116,15 @@ async function loadPhotos() {
     error.value = null
 
     const currentAccessCode = accessCode.value?.trim()
-    const albumResponse = await photosService.getAlbum(albumId.value, currentAccessCode)
+    const [albumResponse, response] = await Promise.all([
+      photosService.getAlbum(albumId.value, currentAccessCode),
+      photosService.getAlbumPhotos(albumId.value, currentAccessCode)
+    ])
     album.value = albumResponse?.data || {
       id: albumId.value,
       title: `Álbum ${albumId.value}`
     }
 
-    const response = await photosService.getAlbumPhotos(albumId.value, currentAccessCode)
     const photosData = response?.data || []
     photos.value = photosData.filter(photo => photo && photo.id)
   } catch (err) {

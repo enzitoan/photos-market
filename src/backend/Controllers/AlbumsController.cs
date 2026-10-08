@@ -82,6 +82,17 @@ public class AlbumsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Descarta la caché de Google Drive para ver de inmediato álbumes y fotos nuevos
+    /// </summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("refresh-cache")]
+    public ActionResult<ApiResponse<bool>> RefreshCache()
+    {
+        _googleDriveService.InvalidateCache();
+        return Ok(new ApiResponse<bool> { Success = true, Data = true });
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpPost("{googleAlbumId}/block")]
     public async Task<ActionResult<ApiResponse<bool>>> BlockAlbum(string googleAlbumId)
