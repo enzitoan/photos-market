@@ -66,35 +66,36 @@
         No hay pedidos {{ filter !== 'all' ? getStatusText(filter).toLowerCase() : '' }}
       </div>
       
-      <div v-else class="card overflow-x-auto -mx-4 sm:mx-0">
-        <table class="w-full min-w-[640px]">
+      <div v-else class="card p-0 overflow-x-auto -mx-4 sm:mx-0">
+        <table class="w-full min-w-[600px]">
           <thead class="bg-gray-50">
             <tr>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Pedido</th>
-              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Cliente</th>
-              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Email</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Cliente</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fotos</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
-              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[220px]">Enlace</th>
+              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase min-w-[150px]">Enlace</th>
               <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase hidden md:table-cell">Fecha</th>
-              <th class="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+              <th class="sticky right-0 z-10 bg-gray-50 px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.2)]">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200">
-            <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-gray-50">
-              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium">#{{ order.id.substring(0, 8) }}</td>
-              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden lg:table-cell">
-                <div class="font-medium">{{ order.userName || 'Sin nombre' }}</div>
-              </td>
-              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden md:table-cell">
-                <a :href="`mailto:${order.userEmail}`" class="text-primary-600 hover:text-primary-700">
+            <tr v-for="order in filteredOrders" :key="order.id" class="group hover:bg-gray-50">
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium whitespace-nowrap">#{{ order.id.substring(0, 8) }}</td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm hidden md:table-cell max-w-[200px]">
+                <div class="font-medium truncate">{{ order.userName || 'Sin nombre' }}</div>
+                <a
+                  :href="`mailto:${order.userEmail}`"
+                  class="block truncate text-primary-600 hover:text-primary-700"
+                  :title="order.userEmail"
+                >
                   {{ order.userEmail }}
                 </a>
               </td>
               <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm">{{ order.photos.length }}</td>
-              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium">${{ Math.round(order.totalAmount).toLocaleString('es-CL') }} <span class="hidden sm:inline">{{ order.currency }}</span></td>
-              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm">
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm font-medium whitespace-nowrap">${{ Math.round(order.totalAmount).toLocaleString('es-CL') }} <span class="hidden sm:inline">{{ order.currency }}</span></td>
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm whitespace-nowrap">
                 <span 
                   class="px-2 py-1 rounded-full text-xs font-medium"
                   :class="getStatusClass(order.status)"
@@ -144,8 +145,8 @@
                 </div>
                 <span v-else class="text-gray-400">—</span>
               </td>
-              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-500 hidden md:table-cell">{{ formatDate(order.createdAt) }}</td>
-              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm">
+              <td class="px-2 sm:px-4 py-3 text-xs sm:text-sm text-gray-500 hidden md:table-cell whitespace-nowrap">{{ formatDateShort(order.createdAt) }}</td>
+              <td class="sticky right-0 z-10 bg-white group-hover:bg-gray-50 px-2 sm:px-4 py-3 text-xs sm:text-sm shadow-[-6px_0_6px_-6px_rgba(0,0,0,0.2)]">
                 <div class="flex gap-1 sm:gap-2">
                   <button 
                     @click="viewOrderDetails(order)"
@@ -604,7 +605,18 @@ function getDownloadLinkByOrderId(orderId) {
 
 function truncateUrl(url) {
   if (!url) return ''
-  return url.length > 40 ? `${url.slice(0, 37)}...` : url
+  return url.length > 28 ? `${url.slice(0, 25)}...` : url
+}
+
+function formatDateShort(dateString) {
+  if (!dateString) return 'N/A'
+  return new Date(dateString).toLocaleString('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 function handleImageError(event) {
